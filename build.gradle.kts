@@ -49,6 +49,10 @@ dependencies {
     // HTTP Client
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Firebase Messaging
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
