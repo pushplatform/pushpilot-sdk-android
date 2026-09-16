@@ -1,5 +1,6 @@
 package com.pushplatform.sdk
 
+import android.app.Activity
 import android.content.Context
 import com.google.firebase.messaging.RemoteMessage
 import com.pushplatform.sdk.core.ApiClient
@@ -8,7 +9,9 @@ import com.pushplatform.sdk.core.InstallationManager
 import com.pushplatform.sdk.core.SecureStorage
 import com.pushplatform.sdk.core.TokenRegistry
 import com.pushplatform.sdk.models.SdkError
+import com.pushplatform.sdk.notifications.NotificationChannelManager
 import com.pushplatform.sdk.utils.Logger
+import com.pushplatform.sdk.utils.PermissionChecker
 
 class PushPlatform private constructor() {
 
@@ -18,6 +21,8 @@ class PushPlatform private constructor() {
     private var apiClient: ApiClient? = null
     private var tokenRegistry: TokenRegistry? = null
     private var fcmTokenManager: FcmTokenManager? = null
+    private var notificationChannelManager: NotificationChannelManager? = null
+    private var permissionChecker: PermissionChecker? = null
 
     var delegate: PushPlatformDelegate? = null
 
@@ -46,6 +51,10 @@ class PushPlatform private constructor() {
         apiClient = ApiClient(apiKey, baseUrl)
         tokenRegistry = TokenRegistry(apiClient!!, secureStorage!!)
         fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!)
+        notificationChannelManager = NotificationChannelManager(context.applicationContext)
+        permissionChecker = PermissionChecker(context.applicationContext)
+
+        notificationChannelManager?.createDefaultChannels()
 
         val installationId = installationManager!!.getOrCreateInstallationId()
         Logger.info("SDK configured with installation ID: $installationId")
@@ -59,6 +68,26 @@ class PushPlatform private constructor() {
 
     fun isConfigured(): Boolean {
         return configuration != null
+    }
+
+    fun hasNotificationPermission(): Boolean {
+        return permissionChecker?.hasNotificationPermission() ?: false
+    }
+
+    fun requestNotificationPermission(activity: Activity) {
+        permissionChecker?.requestNotificationPermission(
+            activity,
+            PermissionChecker.REQUEST_CODE_NOTIFICATION_PERMISSION
+        )
+    }
+
+    fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
+        if (requestCode == PermissionChecker.REQUEST_CODE_NOTIFICATION_PERMISSION) {
+            val granted = grantResults.isNotEmpty() &&
+                          grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            Logger.info("Notification permission result: granted=$granted")
+            delegate?.onNotificationPermissionResult(granted)
+        }
     }
 
     internal fun getConfiguration(): PushConfiguration {
@@ -109,4 +138,5 @@ interface PushPlatformDelegate {
     fun didUpdateFcmToken(token: String) {}
     fun didFailToRegisterFcmToken(error: SdkError) {}
     fun didReceiveNotification(data: Map<String, String>) {}
+    fun onNotificationPermissionResult(granted: Boolean) {}
 }
