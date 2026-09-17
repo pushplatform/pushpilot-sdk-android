@@ -284,17 +284,16 @@ override fun didInitialize(installationId: String) {
 
 Called when FCM token registered successfully.
 
-```kotlin
-fun didUpdateFcmToken(token: String)
-```
+**Note**: This method does NOT receive the raw token as a parameter (security requirement per ADR-0004). The token is handled securely within the native SDK.
 
-**Parameters**:
-- `token`: FCM token (first 8 chars only in debug logs)
+```kotlin
+fun didUpdateFcmToken()
+```
 
 **Example**:
 ```kotlin
-override fun didUpdateFcmToken(token: String) {
-    Log.d("Push", "Token registered")
+override fun didUpdateFcmToken() {
+    Log.d("Push", "FCM token registered successfully")
 }
 ```
 

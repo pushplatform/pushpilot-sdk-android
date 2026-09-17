@@ -98,9 +98,9 @@ class MyApplication : Application() {
                 android.util.Log.d("PushPlatform", "Installation ID: $installationId")
             }
             
-            override fun didUpdateFcmToken(token: String) {
-                // FCM token registered
-                android.util.Log.d("PushPlatform", "FCM Token updated")
+            override fun didUpdateFcmToken() {
+                // FCM token registered successfully
+                android.util.Log.d("PushPlatform", "FCM token registered successfully")
             }
             
             override fun didFailToRegisterFcmToken(error: SdkError) {
