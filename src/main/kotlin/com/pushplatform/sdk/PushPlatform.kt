@@ -1,6 +1,7 @@
 package com.pushplatform.sdk
 
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import com.google.firebase.messaging.RemoteMessage
 import com.pushplatform.sdk.core.ApiClient
@@ -10,6 +11,8 @@ import com.pushplatform.sdk.core.SecureStorage
 import com.pushplatform.sdk.core.TokenRegistry
 import com.pushplatform.sdk.models.SdkError
 import com.pushplatform.sdk.notifications.NotificationChannelManager
+import com.pushplatform.sdk.notifications.ParsedNotification
+import com.pushplatform.sdk.utils.AppLifecycleTracker
 import com.pushplatform.sdk.utils.Logger
 import com.pushplatform.sdk.utils.PermissionChecker
 
@@ -23,6 +26,7 @@ class PushPlatform private constructor() {
     private var fcmTokenManager: FcmTokenManager? = null
     private var notificationChannelManager: NotificationChannelManager? = null
     private var permissionChecker: PermissionChecker? = null
+    private var lifecycleTracker: AppLifecycleTracker? = null
 
     var delegate: PushPlatformDelegate? = null
 
@@ -46,13 +50,19 @@ class PushPlatform private constructor() {
             Environment.PRODUCTION -> "https://api.pushplatform.com"
         }
 
-        secureStorage = SecureStorage(context.applicationContext)
+        val appContext = context.applicationContext
+        secureStorage = SecureStorage(appContext)
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
         tokenRegistry = TokenRegistry(apiClient!!, secureStorage!!)
         fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!)
-        notificationChannelManager = NotificationChannelManager(context.applicationContext)
-        permissionChecker = PermissionChecker(context.applicationContext)
+        notificationChannelManager = NotificationChannelManager(appContext)
+        permissionChecker = PermissionChecker(appContext)
+
+        // Initialize lifecycle tracker
+        if (appContext is Application) {
+            lifecycleTracker = AppLifecycleTracker(appContext)
+        }
 
         notificationChannelManager?.createDefaultChannels()
 
@@ -90,6 +100,10 @@ class PushPlatform private constructor() {
         }
     }
 
+    internal fun isAppInForeground(): Boolean {
+        return lifecycleTracker?.isAppInForeground() ?: false
+    }
+
     internal fun getConfiguration(): PushConfiguration {
         return configuration ?: throw SdkError.NotConfigured
     }
@@ -116,9 +130,13 @@ class PushPlatform private constructor() {
         }
     }
 
-    internal fun onFcmMessageReceived(message: RemoteMessage) {
-        Logger.debug("Processing FCM message: ${message.messageId}")
-        delegate?.didReceiveNotification(message.data)
+    internal fun onFcmMessageReceived(
+        message: RemoteMessage,
+        parsed: ParsedNotification,
+        isInForeground: Boolean
+    ) {
+        Logger.debug("Processing FCM message: ${message.messageId}, foreground=$isInForeground")
+        delegate?.didReceiveNotification(parsed, isInForeground)
     }
 
     companion object {
@@ -137,6 +155,6 @@ interface PushPlatformDelegate {
     fun didInitialize(installationId: String)
     fun didUpdateFcmToken(token: String) {}
     fun didFailToRegisterFcmToken(error: SdkError) {}
-    fun didReceiveNotification(data: Map<String, String>) {}
+    fun didReceiveNotification(notification: ParsedNotification, isInForeground: Boolean) {}
     fun onNotificationPermissionResult(granted: Boolean) {}
 }
