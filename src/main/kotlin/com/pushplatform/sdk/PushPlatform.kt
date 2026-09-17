@@ -9,6 +9,7 @@ import com.pushplatform.sdk.core.FcmTokenManager
 import com.pushplatform.sdk.core.InstallationManager
 import com.pushplatform.sdk.core.SecureStorage
 import com.pushplatform.sdk.core.TokenRegistry
+import com.pushplatform.sdk.core.UserManager
 import com.pushplatform.sdk.models.SdkError
 import com.pushplatform.sdk.notifications.NotificationChannelManager
 import com.pushplatform.sdk.notifications.ParsedNotification
@@ -27,6 +28,7 @@ class PushPlatform private constructor() {
     private var notificationChannelManager: NotificationChannelManager? = null
     private var permissionChecker: PermissionChecker? = null
     private var lifecycleTracker: AppLifecycleTracker? = null
+    private var userManager: UserManager? = null
 
     var delegate: PushPlatformDelegate? = null
 
@@ -58,6 +60,7 @@ class PushPlatform private constructor() {
         fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!)
         notificationChannelManager = NotificationChannelManager(appContext)
         permissionChecker = PermissionChecker(appContext)
+        userManager = UserManager(apiClient!!, installationManager!!)
 
         // Initialize lifecycle tracker
         if (appContext is Application) {
@@ -89,6 +92,14 @@ class PushPlatform private constructor() {
             activity,
             PermissionChecker.REQUEST_CODE_NOTIFICATION_PERMISSION
         )
+    }
+
+    fun login(userId: String, callback: (UserManager.Result<Unit>) -> Unit) {
+        userManager?.login(userId, callback) ?: callback(UserManager.Result.Failure(SdkError.NotConfigured))
+    }
+
+    fun logout(callback: (UserManager.Result<Unit>) -> Unit) {
+        userManager?.logout(callback) ?: callback(UserManager.Result.Failure(SdkError.NotConfigured))
     }
 
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
