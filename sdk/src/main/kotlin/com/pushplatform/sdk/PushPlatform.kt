@@ -130,7 +130,7 @@ class PushPlatform private constructor() {
                 when (result) {
                     is TokenRegistry.Result.Success -> {
                         Logger.info("FCM token registered successfully")
-                        delegate?.didUpdateFcmToken(token)
+                        delegate?.didUpdateFcmToken()
                     }
                     is TokenRegistry.Result.Failure -> {
                         Logger.error("FCM token registration failed: ${result.error.message}")
@@ -164,7 +164,7 @@ class PushPlatform private constructor() {
 
 interface PushPlatformDelegate {
     fun didInitialize(installationId: String)
-    fun didUpdateFcmToken(token: String) {}
+    fun didUpdateFcmToken() {}
     fun didFailToRegisterFcmToken(error: SdkError) {}
     fun didReceiveNotification(notification: ParsedNotification, isInForeground: Boolean) {}
     fun onNotificationPermissionResult(granted: Boolean) {}

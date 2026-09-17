@@ -143,7 +143,7 @@ class SdkIntegrationTest {
                 latch.countDown()
             }
 
-            override fun didUpdateFcmToken(token: String) {}
+            override fun didUpdateFcmToken() {}
             override fun didFailToRegisterFcmToken(error: SdkError) {}
             override fun didReceiveNotification(notification: ParsedNotification, isInForeground: Boolean) {}
             override fun onNotificationPermissionResult(granted: Boolean) {}

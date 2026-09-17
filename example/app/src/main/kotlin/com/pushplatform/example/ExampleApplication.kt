@@ -27,8 +27,8 @@ class ExampleApplication : Application() {
                 Logger.info("SDK initialized with installation ID: $installationId")
             }
 
-            override fun didUpdateFcmToken(token: String) {
-                Logger.info("FCM token updated: ${token.take(8)}...")
+            override fun didUpdateFcmToken() {
+                Logger.info("FCM token updated successfully")
             }
 
             override fun didFailToRegisterFcmToken(error: SdkError) {
