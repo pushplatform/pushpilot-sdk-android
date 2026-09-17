@@ -1,0 +1,5 @@
+# Add local configuration files
+google-services.json
+local.properties
+*.jks
+*.keystore
