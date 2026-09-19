@@ -59,7 +59,6 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Debugging - Remove in production
+# Debugging
 -keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
 
