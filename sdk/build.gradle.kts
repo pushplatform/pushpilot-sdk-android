@@ -1,5 +1,6 @@
 plugins {
     id("com.android.library")
+    id("org.jetbrains.kotlin.android")
     id("maven-publish")
 }
 
@@ -29,6 +30,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
@@ -37,12 +42,6 @@ android {
         singleVariant("release") {
             withSourcesJar()
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
