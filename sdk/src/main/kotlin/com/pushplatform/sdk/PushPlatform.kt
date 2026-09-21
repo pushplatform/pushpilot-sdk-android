@@ -3,6 +3,7 @@ package com.pushplatform.sdk
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.os.Build
 import com.google.firebase.messaging.RemoteMessage
 import com.pushplatform.sdk.core.ApiClient
 import com.pushplatform.sdk.core.FcmTokenManager
@@ -36,7 +37,10 @@ class PushPlatform private constructor() {
         context: Context,
         apiKey: String,
         environment: Environment = Environment.PRODUCTION,
-        debugMode: Boolean = false
+        debugMode: Boolean = false,
+        apiBaseUrl: String? = null,
+        applicationId: String? = null,
+        completion: ((Result<String>) -> Unit)? = null
     ) {
         Logger.debugMode = debugMode
         Logger.debug("Configuring PushPlatform SDK")
@@ -44,10 +48,12 @@ class PushPlatform private constructor() {
         configuration = PushConfiguration(
             apiKey = apiKey,
             environment = environment,
-            debugMode = debugMode
+            debugMode = debugMode,
+            apiBaseUrl = apiBaseUrl,
+            applicationId = applicationId
         )
 
-        val baseUrl = when (environment) {
+        val baseUrl = apiBaseUrl ?: when (environment) {
             Environment.DEVELOPMENT -> "https://api-dev.pushplatform.com"
             Environment.PRODUCTION -> "https://api.pushplatform.com"
         }
@@ -69,14 +75,36 @@ class PushPlatform private constructor() {
 
         notificationChannelManager?.createDefaultChannels()
 
-        val installationId = installationManager!!.getOrCreateInstallationId()
-        Logger.info("SDK configured with installation ID: $installationId")
+        val deviceId = installationManager!!.getOrCreateInstallationId()
+        val configuredApplicationId = applicationId
+        if (configuredApplicationId == null) {
+            Logger.info("SDK configured with local device ID: $deviceId")
+            completion?.invoke(Result.failure(IllegalArgumentException("applicationId is required for installation registration")))
+            return
+        }
 
-        delegate?.didInitialize(installationId)
+        apiClient!!.registerInstallation(
+            applicationId = configuredApplicationId,
+            deviceId = deviceId,
+            environment = environment.name.lowercase(),
+            osVersion = Build.VERSION.RELEASE ?: "unknown",
+            appVersion = appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "unknown",
+            deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+        ) { result ->
+            when (result) {
+                is ApiClient.Result.Success -> {
+                    installationManager!!.saveBackendInstallationId(result.value)
+                    Logger.info("SDK configured with installation ID: ${result.value}")
+                    delegate?.didInitialize(result.value)
+                    completion?.invoke(Result.success(result.value))
+                }
+                is ApiClient.Result.Failure -> completion?.invoke(Result.failure(result.error))
+            }
+        }
     }
 
     fun getInstallationId(): String? {
-        return installationManager?.getInstallationId()
+        return installationManager?.getBackendInstallationId()
     }
 
     fun isConfigured(): Boolean {

@@ -43,6 +43,50 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
         }
     }
 
+    fun registerInstallation(
+        applicationId: String,
+        deviceId: String,
+        environment: String,
+        osVersion: String,
+        appVersion: String,
+        deviceModel: String,
+        callback: (Result<String>) -> Unit
+    ) {
+        val json = JSONObject().apply {
+            put("application_id", applicationId)
+            put("device_id", deviceId)
+            put("platform", "android")
+            put("environment", environment)
+            put("os_version", osVersion)
+            put("app_version", appVersion)
+            put("sdk_version", "1.0.0")
+            put("device_model", deviceModel)
+        }
+        executeRequest(buildRequest("/v1/installations", json.toString())) { result ->
+            when (result) {
+                is Result.Success -> {
+                    val installationId = runCatching { JSONObject(result.value).getString("id") }
+                    installationId.onSuccess { callback(Result.Success(it)) }
+                        .onFailure { callback(Result.Failure(SdkError.ApiError(201, "Invalid installation response"))) }
+                }
+                is Result.Failure -> callback(result)
+            }
+        }
+    }
+
+    fun loginUser(installationId: String, userId: String, callback: (Result<Unit>) -> Unit) {
+        val json = JSONObject().put("external_user_id", userId)
+        executeRequest(buildRequest("/v1/installations/$installationId/login", json.toString())) { result ->
+            callback(result.map { Unit })
+        }
+    }
+
+    fun logoutUser(installationId: String, callback: (Result<Unit>) -> Unit) {
+        executeRequest(buildRequest("/v1/installations/$installationId/logout", "")) { result ->
+            callback(result.map { Unit })
+        }
+    }
+
     fun updateInstallation(
         installationId: String,
         userUpdate: UserUpdate,

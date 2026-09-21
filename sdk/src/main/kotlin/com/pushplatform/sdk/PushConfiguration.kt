@@ -8,5 +8,7 @@ enum class Environment {
 data class PushConfiguration(
     val apiKey: String,
     val environment: Environment = Environment.PRODUCTION,
-    val debugMode: Boolean = false
+    val debugMode: Boolean = false,
+    val apiBaseUrl: String? = null,
+    val applicationId: String? = null
 )

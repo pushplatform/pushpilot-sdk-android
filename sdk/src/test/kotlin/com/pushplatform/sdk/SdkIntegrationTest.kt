@@ -26,14 +26,14 @@ class SdkIntegrationTest {
     }
 
     @Test
-    fun `SDK configuration initializes correctly`() {
+    fun `SDK configuration without application ID reports registration requirement`() {
         var initCallbackFired = false
-        var capturedInstallationId: String? = null
+        var configureResult: Result<String>? = null
+        val latch = CountDownLatch(1)
 
         sdk.delegate = object : PushPlatformDelegate {
             override fun didInitialize(installationId: String) {
                 initCallbackFired = true
-                capturedInstallationId = installationId
             }
         }
 
@@ -41,37 +41,50 @@ class SdkIntegrationTest {
             context = context,
             apiKey = "pk_test_integration",
             environment = Environment.DEVELOPMENT,
-            debugMode = true
+            debugMode = true,
+            completion = {
+                configureResult = it
+                latch.countDown()
+            }
         )
 
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
         assertTrue(sdk.isConfigured())
-        assertTrue(initCallbackFired)
-        assertNotNull(capturedInstallationId)
-        assertEquals(capturedInstallationId, sdk.getInstallationId())
+        assertFalse(initCallbackFired)
+        assertTrue(configureResult?.isFailure == true)
+        assertNull(sdk.getInstallationId())
     }
 
     @Test
-    fun `installation ID persists across reconfigurations`() {
+    fun `configuration requirement is reported across reconfigurations`() {
+        val results = mutableListOf<Result<String>>()
+        val latch = CountDownLatch(2)
         sdk.configure(
             context = context,
             apiKey = "pk_test_persistence",
             environment = Environment.DEVELOPMENT,
-            debugMode = true
+            debugMode = true,
+            completion = {
+                results += it
+                latch.countDown()
+            }
         )
-
-        val firstInstallationId = sdk.getInstallationId()
-        assertNotNull(firstInstallationId)
 
         val newSdkInstance = PushPlatform.getInstance()
         newSdkInstance.configure(
             context = context,
             apiKey = "pk_test_persistence",
             environment = Environment.DEVELOPMENT,
-            debugMode = true
+            debugMode = true,
+            completion = {
+                results += it
+                latch.countDown()
+            }
         )
 
-        val secondInstallationId = newSdkInstance.getInstallationId()
-        assertEquals(firstInstallationId, secondInstallationId)
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+        assertEquals(2, results.size)
+        assertTrue(results.all { it.isFailure })
     }
 
     @Test
@@ -131,7 +144,7 @@ class SdkIntegrationTest {
     }
 
     @Test
-    fun `delegate callbacks fire on initialization`() {
+    fun `delegate does not fire before installation registration succeeds`() {
         val latch = CountDownLatch(1)
         var didInitializeCalled = false
         var receivedInstallationId: String? = null
@@ -140,7 +153,6 @@ class SdkIntegrationTest {
             override fun didInitialize(installationId: String) {
                 didInitializeCalled = true
                 receivedInstallationId = installationId
-                latch.countDown()
             }
 
             override fun didUpdateFcmToken() {}
@@ -153,13 +165,13 @@ class SdkIntegrationTest {
             context = context,
             apiKey = "pk_test_delegate",
             environment = Environment.DEVELOPMENT,
-            debugMode = true
+            debugMode = true,
+            completion = { latch.countDown() }
         )
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertTrue(didInitializeCalled)
-        assertNotNull(receivedInstallationId)
-        assertEquals(receivedInstallationId, sdk.getInstallationId())
+        assertFalse(didInitializeCalled)
+        assertNull(receivedInstallationId)
     }
 
     @Test

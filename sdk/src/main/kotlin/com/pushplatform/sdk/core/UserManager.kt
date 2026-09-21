@@ -15,7 +15,7 @@ class UserManager(
     private val maxDelayMs = 60000L
 
     fun login(userId: String, callback: (Result<Unit>) -> Unit) {
-        val installationId = installationManager.getInstallationId()
+        val installationId = installationManager.getBackendInstallationId()
 
         if (installationId == null) {
             Logger.error("Cannot login: SDK not configured or installation ID missing")
@@ -23,12 +23,11 @@ class UserManager(
             return
         }
 
-        val userUpdate = UserUpdate(externalUserId = userId)
-        updateUserWithRetry(installationId, userUpdate, 0, callback)
+        updateUserWithRetry(installationId, userId, 0, callback)
     }
 
     fun logout(callback: (Result<Unit>) -> Unit) {
-        val installationId = installationManager.getInstallationId()
+        val installationId = installationManager.getBackendInstallationId()
 
         if (installationId == null) {
             Logger.error("Cannot logout: SDK not configured or installation ID missing")
@@ -36,20 +35,19 @@ class UserManager(
             return
         }
 
-        val userUpdate = UserUpdate(externalUserId = null)
-        updateUserWithRetry(installationId, userUpdate, 0, callback)
+        updateUserWithRetry(installationId, null, 0, callback)
     }
 
     private fun updateUserWithRetry(
         installationId: String,
-        userUpdate: UserUpdate,
+        userId: String?,
         attempt: Int,
         callback: (Result<Unit>) -> Unit
     ) {
-        apiClient.updateInstallation(installationId, userUpdate) { result ->
+        val request: (ApiClient.Result<Unit>) -> Unit = { result ->
             when (result) {
                 is ApiClient.Result.Success -> {
-                    val action = if (userUpdate.externalUserId != null) "Login" else "Logout"
+                    val action = if (userId != null) "Login" else "Logout"
                     Logger.debug("$action successful on attempt ${attempt + 1}")
                     callback(Result.Success(Unit))
                 }
@@ -59,19 +57,24 @@ class UserManager(
 
                     if (shouldRetry) {
                         val delay = calculateDelay(attempt)
-                        val action = if (userUpdate.externalUserId != null) "login" else "logout"
+                        val action = if (userId != null) "login" else "logout"
                         Logger.debug("Retrying $action in ${delay}ms (attempt ${attempt + 1}/$maxRetries)")
 
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            updateUserWithRetry(installationId, userUpdate, attempt + 1, callback)
+                            updateUserWithRetry(installationId, userId, attempt + 1, callback)
                         }, delay)
                     } else {
-                        val action = if (userUpdate.externalUserId != null) "Login" else "Logout"
+                        val action = if (userId != null) "Login" else "Logout"
                         Logger.error("$action failed permanently: ${error.message}")
                         callback(Result.Failure(error))
                     }
                 }
             }
+        }
+        if (userId != null) {
+            apiClient.loginUser(installationId, userId, request)
+        } else {
+            apiClient.logoutUser(installationId, request)
         }
     }
 

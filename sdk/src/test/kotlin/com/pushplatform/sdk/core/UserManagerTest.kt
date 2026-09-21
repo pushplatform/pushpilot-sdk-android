@@ -1,7 +1,6 @@
 package com.pushplatform.sdk.core
 
 import com.pushplatform.sdk.models.SdkError
-import com.pushplatform.sdk.models.UserUpdate
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -37,13 +36,13 @@ class UserManagerTest {
         val installationId = "test-installation-id"
         val userId = "user-123"
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).updateInstallation(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -58,7 +57,7 @@ class UserManagerTest {
     @Test
     fun `login fails when installation ID is null`() {
         val latch = CountDownLatch(1)
-        whenever(installationManager.getInstallationId()).thenReturn(null)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(null)
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -78,13 +77,13 @@ class UserManagerTest {
         val installationId = "test-installation-id"
         val error = SdkError.ApiError(400, "Bad request")
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).updateInstallation(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -98,7 +97,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(400, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).updateInstallation(any(), any(), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
     }
 
     @Test
@@ -107,13 +106,13 @@ class UserManagerTest {
         val installationId = "test-installation-id"
         val error = SdkError.ApiError(401, "Unauthorized")
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).updateInstallation(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -127,7 +126,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(401, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).updateInstallation(any(), any(), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
     }
 
     @Test
@@ -135,13 +134,13 @@ class UserManagerTest {
         val latch = CountDownLatch(1)
         val installationId = "test-installation-id"
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(1)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).updateInstallation(any(), any(), any())
+        }.whenever(apiClient).logoutUser(any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.logout {
@@ -156,7 +155,7 @@ class UserManagerTest {
     @Test
     fun `logout fails when installation ID is null`() {
         val latch = CountDownLatch(1)
-        whenever(installationManager.getInstallationId()).thenReturn(null)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(null)
 
         var result: UserManager.Result<Unit>? = null
         userManager.logout {
@@ -171,19 +170,19 @@ class UserManagerTest {
     }
 
     @Test
-    fun `logout sends null external_user_id to API`() {
+    fun `logout calls the backend logout endpoint with the backend installation ID`() {
         val latch = CountDownLatch(1)
         val installationId = "test-installation-id"
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
-        var capturedUserUpdate: UserUpdate? = null
+        var capturedInstallationId: String? = null
         doAnswer { invocation ->
-            capturedUserUpdate = invocation.getArgument(1)
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            capturedInstallationId = invocation.getArgument(0)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(1)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).updateInstallation(eq(installationId), any(), any())
+        }.whenever(apiClient).logoutUser(eq(installationId), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.logout {
@@ -193,8 +192,7 @@ class UserManagerTest {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
         assertTrue(result is UserManager.Result.Success)
-        assertNotNull(capturedUserUpdate)
-        assertNull(capturedUserUpdate?.externalUserId)
+        assertEquals(installationId, capturedInstallationId)
     }
 
     @Test
@@ -203,15 +201,17 @@ class UserManagerTest {
         val installationId = "test-installation-id"
         val userId = "user-456"
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
-        var capturedUserUpdate: UserUpdate? = null
+        var capturedInstallationId: String? = null
+        var capturedUserId: String? = null
         doAnswer { invocation ->
-            capturedUserUpdate = invocation.getArgument(1)
+            capturedInstallationId = invocation.getArgument(0)
+            capturedUserId = invocation.getArgument(1)
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).updateInstallation(eq(installationId), any(), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -221,8 +221,8 @@ class UserManagerTest {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
         assertTrue(result is UserManager.Result.Success)
-        assertNotNull(capturedUserUpdate)
-        assertEquals(userId, capturedUserUpdate?.externalUserId)
+        assertEquals(installationId, capturedInstallationId)
+        assertEquals(userId, capturedUserId)
     }
 
     @Test
@@ -230,15 +230,15 @@ class UserManagerTest {
         val latch = CountDownLatch(1)
         val installationId = "test-installation-id"
 
-        whenever(installationManager.getInstallationId()).thenReturn(installationId)
+        whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
-        var capturedUserUpdate: UserUpdate? = null
+        var capturedUserId: String? = null
         doAnswer { invocation ->
-            capturedUserUpdate = invocation.getArgument(1)
+            capturedUserId = invocation.getArgument(1)
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).updateInstallation(eq(installationId), any(), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(""), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("") {
@@ -248,8 +248,7 @@ class UserManagerTest {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
         assertTrue(result is UserManager.Result.Success)
-        assertNotNull(capturedUserUpdate)
-        assertEquals("", capturedUserUpdate?.externalUserId)
+        assertEquals("", capturedUserId)
     }
 
 }

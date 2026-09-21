@@ -29,11 +29,20 @@ class InstallationManager(private val storage: SecureStorage) {
         return storage.getString(KEY_INSTALLATION_ID)
     }
 
+    fun saveBackendInstallationId(installationId: String): Boolean {
+        return storage.putString(KEY_BACKEND_INSTALLATION_ID, installationId)
+    }
+
+    fun getBackendInstallationId(): String? {
+        return storage.getString(KEY_BACKEND_INSTALLATION_ID)
+    }
+
     fun clearInstallationId(): Boolean {
         return storage.remove(KEY_INSTALLATION_ID)
     }
 
     companion object {
         private const val KEY_INSTALLATION_ID = "installation_id"
+        private const val KEY_BACKEND_INSTALLATION_ID = "backend_installation_id"
     }
 }
