@@ -320,7 +320,7 @@ FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
 
 ```bash
 curl -X POST https://api.pushplatform.com/v1/notifications \
-  -H "Authorization: Bearer pk_your_key" \
+  -H "Authorization: Bearer $PUSHPLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "installation_ids": ["your-installation-id"],
