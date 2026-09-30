@@ -115,7 +115,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             put("bundle_id", subscription.bundleId)
         }
 
-        val request = buildRequest("/v1/installations/$installationId/subscriptions", json.toString())
+        val request = buildRequest("/v1/installations/$installationId/tokens", json.toString())
 
         executeRequest(request) { result ->
             callback(result.map { Unit })

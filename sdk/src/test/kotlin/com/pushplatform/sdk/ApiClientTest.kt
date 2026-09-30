@@ -168,6 +168,7 @@ class ApiClientTest {
 
         assertTrue("Callback should complete", latch.await(10, TimeUnit.SECONDS))
         assertTrue("Result should be Success", result is ApiClient.Result.Success)
+        assertEquals("/v1/installations/$installationId/tokens", mockServer.takeRequest().path)
     }
 
     @Test
