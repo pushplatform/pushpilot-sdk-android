@@ -12,7 +12,12 @@
 - Предыдущий native audit подтвердил consumer build с Maven Local. Эти проверки и unit tests повторно не запускаются. Новая проверка будет одна: чистый consumer с публичным Maven URL.
 - Staging publication успешно завершена: `BUILD SUCCESSFUL in 12s`, compile и bundle AAR — `UP-TO-DATE`. Проверки SDK не повторялись.
 - SHA-256 AAR: `eb5912dced22c09887961e043f6f10c6a8601467876349af2cd49d93145b6a9d` (совпадает с исходной готовой сборкой).
-- Публикация и новая проверка установки пока не завершены; результаты записываются ниже по мере выполнения.
+- Публикация завершена: ветка `maven`, distribution commit `2d3b626`. Source commit publication: `ad192aa8a81df5207e628c384ab04eb2b7e99f17`.
+- Чистый consumer с новым публичным Maven URL собран ровно один раз: `BUILD SUCCESSFUL in 22s`, 33/33 tasks executed; `:app:compileDebugKotlin`, `:app:checkDebugAarMetadata`, `:app:mergeExtDexDebug` и `:app:assembleDebug` завершились успешно.
+- Consumer находился в отдельном временном каталоге `pushpilot-android-consumer.mPxpeB`; результат — `app/build/outputs/apk/debug/app-debug.apk`. Он импортировал `PushPlatform`/`Environment`, разрешил транзитивные зависимости и собрал APK без соседних checkout, Maven Local, GitHub credentials и Firebase config.
+- Для SDK в consumer использован `exclusiveContent` с единственным публичным raw GitHub Maven endpoint; локальные SDK dependencies и подстановка project dependency отсутствуют. Существующий Gradle cache переиспользован для инструментов и сторонних библиотек; `com.pushplatform` в этом cache до проверки отсутствовал.
+- Версия `1.0.0` доступна для установки. Настройки registry/namespace/signing и действия владельца для этого канала не требуются.
+- Source release: ветка `release/android-1.0.0` и тег `v1.0.0`. PR создаётся владельцем по ссылке ниже. GitHub UI и ожидание CI не используются.
 
 ## Установка
 
@@ -61,3 +66,14 @@ AndroidX, OkHttp, Firebase BOM/messaging и Kotlin stdlib разрешаются
 https://github.com/pushplatform/pushpilot-sdk-android/compare/main...release/android-1.0.0?expand=1
 
 iOS, RN, Web, Flutter, server, console и база в рамках этой работы не изменяются.
+
+## Артефакты выпуска
+
+- [Maven distribution](https://github.com/pushplatform/pushpilot-sdk-android/tree/maven/com/pushplatform/sdk-android/1.0.0)
+- [Publication source commit](https://github.com/pushplatform/pushpilot-sdk-android/commit/ad192aa8a81df5207e628c384ab04eb2b7e99f17)
+- [Distribution commit](https://github.com/pushplatform/pushpilot-sdk-android/commit/2d3b626)
+- [POM без авторизации](https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/com/pushplatform/sdk-android/1.0.0/sdk-android-1.0.0.pom)
+- [AAR без авторизации](https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/com/pushplatform/sdk-android/1.0.0/sdk-android-1.0.0.aar)
+- [Исходники тега v1.0.0](https://github.com/pushplatform/pushpilot-sdk-android/tree/v1.0.0)
+
+Для фиксации Maven repository на неизменяемый commit можно заменить `maven/` в URL на `2d3b626/`; Maven coordinates остаются прежними. Этот выпуск размещён на существующем публичном GitHub без отдельного hosting deploy и GitHub Actions. Публикация на Maven Central не выполнялась.

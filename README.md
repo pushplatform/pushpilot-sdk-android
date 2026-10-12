@@ -176,4 +176,4 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 ---
 
 **Current Version**: 1.0.0  
-**Last Updated**: 2026-09-17
+**Last Updated**: 2026-10-12
