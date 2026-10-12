@@ -5,6 +5,13 @@ All notable changes to PushPlatform Android SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Distribution release 1.0.0 - 2026-10-12
+
+- Published `com.pushplatform:sdk-android:1.0.0` in the public Maven repository on the `maven` branch of `pushplatform/pushpilot-sdk-android`.
+- Installation uses a standard Maven dependency and repository URL without credentials, SDK checkout, or Maven Local.
+- Reused the existing release AAR without changes; added publication metadata, documentation archive, and the approved MIT license notice.
+- Verified one fresh consumer APK build against the public Maven endpoint. See [release instructions](docs/RELEASING.md).
+
 ## [1.0.0] - 2026-09-17
 
 ### Added
