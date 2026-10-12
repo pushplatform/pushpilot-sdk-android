@@ -68,20 +68,28 @@ dependencies {
     testImplementation("androidx.test:core:1.5.0")
 }
 
+val documentationJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("javadoc")
+    from(rootProject.file("docs/API_REFERENCE.md"))
+    from(rootProject.file("README.md"))
+    from(rootProject.file("LICENSE"))
+}
+
 afterEvaluate {
     publishing {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
+                artifact(documentationJar)
 
                 groupId = "com.pushplatform"
                 artifactId = "sdk-android"
                 version = "1.0.0"
 
                 pom {
-                    name.set("PushPlatform Android SDK")
-                    description.set("Native Android SDK for Push Platform")
-                    url.set("https://pushplatform.example")
+                    name.set("PushPilot Android SDK")
+                    description.set("Standalone Android SDK for PushPilot push notifications")
+                    url.set("https://github.com/pushplatform/pushpilot-sdk-android")
 
                     licenses {
                         license {
@@ -89,12 +97,27 @@ afterEvaluate {
                             url.set("https://opensource.org/licenses/MIT")
                         }
                     }
+                    developers {
+                        developer {
+                            id.set("pushplatform")
+                            name.set("Push Platform Team")
+                            url.set("https://github.com/pushplatform")
+                        }
+                    }
+                    scm {
+                        url.set("https://github.com/pushplatform/pushpilot-sdk-android")
+                        connection.set("scm:git:https://github.com/pushplatform/pushpilot-sdk-android.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/pushplatform/pushpilot-sdk-android.git")
+                    }
                 }
             }
         }
 
         repositories {
-            mavenLocal()
+            maven {
+                name = "releaseStaging"
+                url = rootProject.layout.buildDirectory.dir("maven-repository").get().asFile.toURI()
+            }
         }
     }
 }

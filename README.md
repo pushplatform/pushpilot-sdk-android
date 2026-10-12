@@ -1,7 +1,7 @@
-# PushPlatform Android SDK
+# PushPilot Android SDK
 
 [![API](https://img.shields.io/badge/API-21%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=21)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Native Android SDK for PushPlatform - a modern, production-ready push notification platform.
 
@@ -27,6 +27,26 @@ Native Android SDK for PushPlatform - a modern, production-ready push notificati
 ## Quick Start
 
 ### 1. Add Dependencies
+
+In `settings.gradle.kts`, add the public Maven repository:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/")
+            content { includeModule("com.pushplatform", "sdk-android") }
+        }
+    }
+}
+```
+
+The SDK is published in this public Maven repository, not Maven Central.
+No GitHub credentials, local SDK checkout, or Maven Local setup are required.
+The package and API names remain `com.pushplatform:sdk-android` and `PushPlatform`.
+
 
 ```kotlin
 dependencies {
@@ -89,6 +109,7 @@ PushPlatform.getInstance().login("user_123") { result ->
 
 ## Documentation
 
+- [Release instructions and status](docs/RELEASING.md)
 - [Quick Start Guide](docs/QUICK_START.md) - Step-by-step integration
 - [API Reference](docs/API_REFERENCE.md) - Complete API documentation
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
@@ -119,8 +140,8 @@ sdk-android/
 - **Example App**: Complete reference implementation
 
 ```bash
-./gradlew sdk-android:testDebugUnitTest
-./gradlew sdk-android:build
+./gradlew :sdk:testDebugUnitTest
+./gradlew :sdk:build
 ```
 
 ## ProGuard/R8
@@ -140,13 +161,13 @@ Consumer rules are automatically applied. No manual configuration needed.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/pushplatform/sdk-android/issues)
+- **Issues**: [GitHub Issues](https://github.com/pushplatform/pushpilot-sdk-android/issues)
 - **Email**: support@pushplatform.com
 - **Docs**: https://docs.pushplatform.com
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Changelog
 

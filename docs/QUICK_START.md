@@ -48,6 +48,24 @@ dependencies {
 
 ### 2.1 Add SDK Dependency
 
+Add the public Maven repository in `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/")
+            content { includeModule("com.pushplatform", "sdk-android") }
+        }
+    }
+}
+```
+
+No GitHub authentication, SDK checkout, or Maven Local is needed.
+
+
 ```kotlin
 dependencies {
     implementation("com.pushplatform:sdk-android:1.0.0")
