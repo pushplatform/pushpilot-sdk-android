@@ -13,4 +13,12 @@ The 1.0.0 installation callback succeeded without fetching an existing Firebase 
 
 [Firebase token retrieval contract](https://firebase.google.com/docs/cloud-messaging/android/client#retrieve-the-current-registration-token).
 
-Publication/anonymous consumer verification results will be appended after release.
+## Published artifacts and consumer
+
+- Source commit: `5e53471`, release tag `v1.0.1`; public Maven distribution commit `153f119`.
+- Coordinate: `com.pushplatform:sdk-android:1.0.1`, existing anonymous GitHub Maven endpoint.
+- Downloaded public AAR is byte-for-byte equal to the verified candidate; SHA-256 `f3f00ddf817f687a6a2df45848e031b772b5f1e3c7c5e470c0b8aa80d5593e67`.
+- One fresh external Android consumer resolved the new public coordinate and compiled/dexed/assembled a debug APK: 33 tasks, BUILD SUCCESSFUL. No local SDK source, Maven Local, GitHub credentials, Google services config or application execution was involved.
+- The old 1.0.0 coordinate was not modified. Maven metadata retains both versions.
+- Wrappers consuming this fix: RN/Expo 1.0.2 (bundled AAR), Flutter 1.0.2 (public Maven dependency). iOS/Web are unchanged.
+
