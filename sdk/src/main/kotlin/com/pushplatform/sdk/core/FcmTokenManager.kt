@@ -2,9 +2,10 @@ package com.pushplatform.sdk.core
 
 import com.pushplatform.sdk.utils.Logger
 
-class FcmTokenManager(
+class FcmTokenManager @JvmOverloads constructor(
     private val storage: SecureStorage,
-    private val tokenRegistry: TokenRegistry
+    private val tokenRegistry: TokenRegistry,
+    private val environment: String = "production"
 ) {
 
     fun saveToken(token: String) {
@@ -33,7 +34,7 @@ class FcmTokenManager(
             provider = "fcm",
             token = token,
             bundleId = bundleId,
-            environment = "production",
+            environment = environment,
             callback = callback
         )
     }

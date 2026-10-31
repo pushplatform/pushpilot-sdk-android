@@ -59,7 +59,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             put("environment", environment)
             put("os_version", osVersion)
             put("app_version", appVersion)
-            put("sdk_version", "1.0.0")
+            put("sdk_version", "1.0.1")
             put("device_model", deviceModel)
         }
         executeRequest(buildRequest("/v1/installations", json.toString())) { result ->
@@ -129,7 +129,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             .url("$baseUrl$path")
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
-            .addHeader("User-Agent", "PushPlatform-Android-SDK/1.0.0")
+            .addHeader("User-Agent", "PushPlatform-Android-SDK/1.0.1")
             .method(method, if (method == "POST" || method == "PATCH") requestBody else null)
             .build()
     }

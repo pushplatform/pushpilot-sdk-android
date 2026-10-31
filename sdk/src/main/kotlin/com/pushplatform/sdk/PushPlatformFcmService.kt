@@ -17,11 +17,8 @@ class PushPlatformFcmService : FirebaseMessagingService() {
         Logger.debug("FCM token refreshed: ${Logger.tokenMasked(token)}")
 
         val pushPlatform = PushPlatform.getInstance()
-        if (pushPlatform.isConfigured()) {
-            pushPlatform.onFcmTokenRefreshed(token)
-        } else {
-            Logger.debug("SDK not configured, token will be registered on next configure()")
-        }
+        // configure() replays this token once its backend installation exists.
+        pushPlatform.onFcmTokenRefreshed(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {

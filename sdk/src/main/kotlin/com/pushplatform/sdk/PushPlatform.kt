@@ -4,9 +4,11 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Build
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
 import com.pushplatform.sdk.core.ApiClient
 import com.pushplatform.sdk.core.FcmTokenManager
+import com.pushplatform.sdk.core.FcmRegistration
 import com.pushplatform.sdk.core.InstallationManager
 import com.pushplatform.sdk.core.SecureStorage
 import com.pushplatform.sdk.core.TokenRegistry
@@ -17,6 +19,7 @@ import com.pushplatform.sdk.notifications.ParsedNotification
 import com.pushplatform.sdk.utils.AppLifecycleTracker
 import com.pushplatform.sdk.utils.Logger
 import com.pushplatform.sdk.utils.PermissionChecker
+import java.util.concurrent.atomic.AtomicLong
 
 class PushPlatform private constructor() {
 
@@ -31,6 +34,11 @@ class PushPlatform private constructor() {
     private var lifecycleTracker: AppLifecycleTracker? = null
     private var userManager: UserManager? = null
 
+    private val configurationVersion = AtomicLong()
+    private val tokenLock = Any()
+    @Volatile private var fcmRegistration: FcmRegistration? = null
+    private var pendingFcmToken: String? = null
+
     var delegate: PushPlatformDelegate? = null
 
     fun configure(
@@ -42,6 +50,8 @@ class PushPlatform private constructor() {
         applicationId: String? = null,
         completion: ((Result<String>) -> Unit)? = null
     ) {
+        val version = configurationVersion.incrementAndGet()
+        fcmRegistration = null
         Logger.debugMode = debugMode
         Logger.debug("Configuring PushPlatform SDK")
 
@@ -63,7 +73,7 @@ class PushPlatform private constructor() {
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
         tokenRegistry = TokenRegistry(apiClient!!, secureStorage!!)
-        fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!)
+        fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!, environment.name.lowercase())
         notificationChannelManager = NotificationChannelManager(appContext)
         permissionChecker = PermissionChecker(appContext)
         userManager = UserManager(apiClient!!, installationManager!!)
@@ -83,6 +93,28 @@ class PushPlatform private constructor() {
             return
         }
 
+        val manager = installationManager!!
+        val registration = FcmRegistration(
+            fcmTokenManager!!, appContext.packageName,
+            isCurrent = { configurationVersion.get() == version },
+            updated = { delegate?.didUpdateFcmToken() },
+            failed = { delegate?.didFailToRegisterFcmToken(it) }
+        )
+        synchronized(tokenLock) {
+            fcmRegistration = registration
+            pendingFcmToken?.let { registration.refreshed(it) }
+        }
+        val fetchVersion = registration.fetchVersion()
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                val result = if (task.isSuccessful) Result.success(task.result)
+                    else Result.failure(task.exception ?: IllegalStateException("FCM token unavailable"))
+                registration.fetched(fetchVersion, result)
+            }
+        } catch (error: Exception) {
+            registration.fetched(fetchVersion, Result.failure(error))
+        }
+
         apiClient!!.registerInstallation(
             applicationId = configuredApplicationId,
             deviceId = deviceId,
@@ -91,9 +123,14 @@ class PushPlatform private constructor() {
             appVersion = appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "unknown",
             deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
         ) { result ->
+            if (configurationVersion.get() != version) {
+                completion?.invoke(Result.failure(IllegalStateException("SDK configuration was replaced")))
+                return@registerInstallation
+            }
             when (result) {
                 is ApiClient.Result.Success -> {
-                    installationManager!!.saveBackendInstallationId(result.value)
+                    manager.saveBackendInstallationId(result.value)
+                    registration.installationReady(result.value)
                     Logger.info("SDK configured with installation ID: ${result.value}")
                     delegate?.didInitialize(result.value)
                     completion?.invoke(Result.success(result.value))
@@ -148,25 +185,11 @@ class PushPlatform private constructor() {
     }
 
     internal fun onFcmTokenRefreshed(token: String) {
-        fcmTokenManager?.saveToken(token)
-
-        val installationId = getInstallationId()
-        if (installationId != null) {
-            val bundleId = configuration?.let { "com.pushplatform.sdk" } ?: return
-
-            fcmTokenManager?.registerToken(installationId, token, bundleId) { result ->
-                when (result) {
-                    is TokenRegistry.Result.Success -> {
-                        Logger.info("FCM token registered successfully")
-                        delegate?.didUpdateFcmToken()
-                    }
-                    is TokenRegistry.Result.Failure -> {
-                        Logger.error("FCM token registration failed: ${result.error.message}")
-                        delegate?.didFailToRegisterFcmToken(result.error)
-                    }
-                }
-            }
+        val registration = synchronized(tokenLock) {
+            pendingFcmToken = token
+            fcmRegistration
         }
+        registration?.refreshed(token)
     }
 
     internal fun onFcmMessageReceived(

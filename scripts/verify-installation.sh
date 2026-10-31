@@ -58,7 +58,7 @@ android {
     }
     kotlinOptions { jvmTarget = "11" }
 }
-dependencies { implementation("com.pushplatform:sdk-android:1.0.0") }
+dependencies { implementation("com.pushplatform:sdk-android:1.0.1") }
 EOF
 cat > "$consumer/app/src/main/AndroidManifest.xml" <<'EOF'
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
