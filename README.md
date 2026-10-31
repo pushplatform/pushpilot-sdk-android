@@ -50,7 +50,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.0.0")
+    implementation("com.pushplatform:sdk-android:1.0.1")
     
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -175,5 +175,11 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ---
 
-**Current Version**: 1.0.0  
+**Current Version**: 1.0.1
 **Last Updated**: 2026-10-12
+
+### FCM registration in 1.0.1
+
+`configure()` automatically retrieves the current Firebase token, waits for the backend installation and registers the token using the configured environment and the host application package. Early `onNewToken` callbacks are queued; token rotations are serialized. `didInitialize` reports installation creation; `didUpdateFcmToken` reports successful backend token registration. Failures use `didFailToRegisterFcmToken`. No manual token-registration API call is needed. Firebase configuration and Android notification permission remain host application setup requirements.
+
+See [patch verification](docs/FCM_TOKEN_FIX.md).
