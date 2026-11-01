@@ -69,6 +69,9 @@ class NotificationHandler(private val context: Context) {
         }
 
         // Add notification data as extras
+        intent.putExtra("pushplatform_notification", true)
+        intent.putExtra("title", parsed.title)
+        intent.putExtra("body", parsed.body)
         intent.putExtra("event_id", parsed.eventId)
         intent.putExtra("call_id", parsed.callId)
         parsed.customData.forEach { (key, value) ->

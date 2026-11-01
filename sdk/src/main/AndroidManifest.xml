@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application>
+        <provider
+            android:name=".PushPlatformInitProvider"
+            android:authorities="${applicationId}.pushplatform.init"
+            android:exported="false" />
         <service
             android:name=".PushPlatformFcmService"
             android:exported="false">

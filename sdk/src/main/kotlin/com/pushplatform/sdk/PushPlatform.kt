@@ -42,6 +42,42 @@ class PushPlatform private constructor() {
     private var pendingFcmToken: String? = null
 
     var delegate: PushPlatformDelegate? = null
+    private var deviceToken: String? = null
+
+    data class InitializeOptions(
+        val applicationId: String,
+        val url: String? = null,
+        val environment: Environment? = null,
+        val debugMode: Boolean = false
+    )
+
+    fun initialize(context: Context, applicationId: String, completion: ((Result<String>) -> Unit)? = null) {
+        initialize(context, InitializeOptions(applicationId), completion)
+    }
+
+    fun initialize(context: Context, options: InitializeOptions, completion: ((Result<String>) -> Unit)? = null) {
+        if (configuration != null) {
+            completion?.invoke(Result.success(getInstallationId() ?: options.applicationId))
+            return
+        }
+        val reported = when {
+            options.environment != null -> options.environment.name.lowercase()
+            options.url != null -> "development"
+            else -> null
+        }
+        configure(
+            context,
+            apiKey = "",
+            environment = options.environment ?: Environment.PRODUCTION,
+            debugMode = options.debugMode,
+            apiBaseUrl = options.url ?: DEFAULT_API_BASE_URL,
+            applicationId = options.applicationId,
+            reportedEnvironment = reported,
+            completion = completion
+        )
+    }
+
+    fun getDeviceToken(): String? = deviceToken
 
     fun configure(
         context: Context,
@@ -50,6 +86,7 @@ class PushPlatform private constructor() {
         debugMode: Boolean = false,
         apiBaseUrl: String? = null,
         applicationId: String? = null,
+        reportedEnvironment: String? = environment.name.lowercase(),
         completion: ((Result<String>) -> Unit)? = null
     ) {
         val version = configurationVersion.incrementAndGet()
@@ -62,13 +99,11 @@ class PushPlatform private constructor() {
             environment = environment,
             debugMode = debugMode,
             apiBaseUrl = apiBaseUrl,
-            applicationId = applicationId
+            applicationId = applicationId,
+            reportedEnvironment = reportedEnvironment
         )
 
-        val baseUrl = apiBaseUrl ?: when (environment) {
-            Environment.DEVELOPMENT -> "https://api-dev.pushplatform.com"
-            Environment.PRODUCTION -> "https://api.pushplatform.com"
-        }
+        val baseUrl = apiBaseUrl ?: DEFAULT_API_BASE_URL
 
         val appContext = context.applicationContext
         applicationContext = appContext
@@ -76,7 +111,7 @@ class PushPlatform private constructor() {
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
         tokenRegistry = TokenRegistry(apiClient!!, secureStorage!!)
-        fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!, environment.name.lowercase())
+        fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!, reportedEnvironment ?: "")
         notificationChannelManager = NotificationChannelManager(appContext)
         permissionChecker = PermissionChecker(appContext)
         userManager = UserManager(apiClient!!, installationManager!!)
@@ -121,7 +156,7 @@ class PushPlatform private constructor() {
         apiClient!!.registerInstallation(
             applicationId = configuredApplicationId,
             deviceId = deviceId,
-            environment = environment.name.lowercase(),
+            environment = reportedEnvironment,
             osVersion = Build.VERSION.RELEASE ?: "unknown",
             appVersion = appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "unknown",
             deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}",
@@ -153,7 +188,7 @@ class PushPlatform private constructor() {
         val appId = config.applicationId ?: return
         apiClient?.registerInstallation(
             applicationId = appId, deviceId = manager.getOrCreateInstallationId(),
-            environment = config.environment.name.lowercase(), osVersion = Build.VERSION.RELEASE ?: "unknown",
+            environment = config.reportedEnvironment, osVersion = Build.VERSION.RELEASE ?: "unknown",
             appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown",
             deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}", metadata = DeviceMetadata.collect(context)
         ) { result -> if (result is ApiClient.Result.Failure) Logger.debug("Metadata refresh failed") }
@@ -205,6 +240,8 @@ class PushPlatform private constructor() {
     }
 
     internal fun onFcmTokenRefreshed(token: String) {
+        deviceToken = token
+        delegate?.didUpdateDeviceToken(token)
         val registration = synchronized(tokenLock) {
             pendingFcmToken = token
             fcmRegistration
@@ -216,12 +253,20 @@ class PushPlatform private constructor() {
         message: RemoteMessage,
         parsed: ParsedNotification,
         isInForeground: Boolean
-    ) {
+    ): Boolean {
         Logger.debug("Processing FCM message: ${message.messageId}, foreground=$isInForeground")
+        val display = NotificationDisplay(parsed)
+        if (isInForeground) delegate?.notificationWillDisplay(display)
         delegate?.didReceiveNotification(parsed, isInForeground)
+        return display.isPrevented
+    }
+
+    internal fun onNotificationOpened(parsed: ParsedNotification) {
+        delegate?.didOpenNotification(parsed)
     }
 
     companion object {
+        const val DEFAULT_API_BASE_URL = "https://api.pushpilot.ru"
         @Volatile
         private var instance: PushPlatform? = null
 
@@ -233,10 +278,19 @@ class PushPlatform private constructor() {
     }
 }
 
+class NotificationDisplay(val notification: ParsedNotification) {
+    private var prevented = false
+    fun preventDefault() { prevented = true }
+    val isPrevented: Boolean get() = prevented
+}
+
 interface PushPlatformDelegate {
     fun didInitialize(installationId: String)
     fun didUpdateFcmToken() {}
+    fun didUpdateDeviceToken(token: String) {}
     fun didFailToRegisterFcmToken(error: SdkError) {}
     fun didReceiveNotification(notification: ParsedNotification, isInForeground: Boolean) {}
+    fun notificationWillDisplay(event: NotificationDisplay) {}
+    fun didOpenNotification(notification: ParsedNotification) {}
     fun onNotificationPermissionResult(granted: Boolean) {}
 }

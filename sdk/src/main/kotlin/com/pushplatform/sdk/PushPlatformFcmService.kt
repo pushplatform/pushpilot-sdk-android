@@ -46,11 +46,10 @@ class PushPlatformFcmService : FirebaseMessagingService() {
 
         // Notify delegate
         val isInForeground = pushPlatform.isAppInForeground()
-        pushPlatform.onFcmMessageReceived(message, parsed, isInForeground)
+        val prevented = pushPlatform.onFcmMessageReceived(message, parsed, isInForeground)
 
-        // Display notification if not in foreground or if it has notification payload
-        val shouldDisplay = !isInForeground || message.notification != null
-        if (shouldDisplay && (parsed.title != null || parsed.body != null)) {
+        val shouldDisplay = !prevented && (parsed.title != null || parsed.body != null)
+        if (shouldDisplay) {
             val handler = NotificationHandler(applicationContext)
             handler.displayNotification(parsed)
         }
