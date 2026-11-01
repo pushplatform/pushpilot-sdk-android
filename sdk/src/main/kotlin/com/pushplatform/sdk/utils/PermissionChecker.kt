@@ -11,7 +11,7 @@ class PermissionChecker(private val context: Context) {
 
     fun hasNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return true
+            return androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
 
         return ContextCompat.checkSelfPermission(

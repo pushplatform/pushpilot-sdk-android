@@ -19,11 +19,13 @@ import com.pushplatform.sdk.notifications.ParsedNotification
 import com.pushplatform.sdk.utils.AppLifecycleTracker
 import com.pushplatform.sdk.utils.Logger
 import com.pushplatform.sdk.utils.PermissionChecker
+import com.pushplatform.sdk.utils.DeviceMetadata
 import java.util.concurrent.atomic.AtomicLong
 
 class PushPlatform private constructor() {
 
     private var configuration: PushConfiguration? = null
+    private var applicationContext: Context? = null
     private var secureStorage: SecureStorage? = null
     private var installationManager: InstallationManager? = null
     private var apiClient: ApiClient? = null
@@ -69,6 +71,7 @@ class PushPlatform private constructor() {
         }
 
         val appContext = context.applicationContext
+        applicationContext = appContext
         secureStorage = SecureStorage(appContext)
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
@@ -80,7 +83,7 @@ class PushPlatform private constructor() {
 
         // Initialize lifecycle tracker
         if (appContext is Application) {
-            lifecycleTracker = AppLifecycleTracker(appContext)
+            lifecycleTracker = AppLifecycleTracker(appContext) { refreshMetadata() }
         }
 
         notificationChannelManager?.createDefaultChannels()
@@ -121,7 +124,8 @@ class PushPlatform private constructor() {
             environment = environment.name.lowercase(),
             osVersion = Build.VERSION.RELEASE ?: "unknown",
             appVersion = appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "unknown",
-            deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
+            deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}",
+            metadata = DeviceMetadata.collect(appContext)
         ) { result ->
             if (configurationVersion.get() != version) {
                 completion?.invoke(Result.failure(IllegalStateException("SDK configuration was replaced")))
@@ -138,6 +142,21 @@ class PushPlatform private constructor() {
                 is ApiClient.Result.Failure -> completion?.invoke(Result.failure(result.error))
             }
         }
+    }
+
+    /** Refresh real permission, locale and device metadata without replacing the installation ID. */
+    fun refreshMetadata() {
+        val config = configuration ?: return
+        val context = applicationContext ?: return
+        val manager = installationManager ?: return
+        if (manager.getBackendInstallationId() == null) return
+        val appId = config.applicationId ?: return
+        apiClient?.registerInstallation(
+            applicationId = appId, deviceId = manager.getOrCreateInstallationId(),
+            environment = config.environment.name.lowercase(), osVersion = Build.VERSION.RELEASE ?: "unknown",
+            appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown",
+            deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}", metadata = DeviceMetadata.collect(context)
+        ) { result -> if (result is ApiClient.Result.Failure) Logger.debug("Metadata refresh failed") }
     }
 
     fun getInstallationId(): String? {
@@ -172,6 +191,7 @@ class PushPlatform private constructor() {
             val granted = grantResults.isNotEmpty() &&
                           grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
             Logger.info("Notification permission result: granted=$granted")
+            refreshMetadata()
             delegate?.onNotificationPermissionResult(granted)
         }
     }
