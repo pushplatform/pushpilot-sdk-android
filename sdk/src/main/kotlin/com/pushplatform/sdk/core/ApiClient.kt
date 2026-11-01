@@ -10,7 +10,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class ApiClient(private val apiKey: String, private val baseUrl: String = "https://api.pushplatform.com") {
+class ApiClient(private val apiKey: String = "", private val baseUrl: String = "https://api.pushpilot.ru") {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -47,7 +47,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
     fun registerInstallation(
         applicationId: String,
         deviceId: String,
-        environment: String,
+        environment: String?,
         osVersion: String,
         appVersion: String,
         deviceModel: String,
@@ -58,7 +58,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             put("application_id", applicationId)
             put("device_id", deviceId)
             put("platform", "android")
-            put("environment", environment)
+            if (!environment.isNullOrEmpty()) put("environment", environment)
             put("os_version", osVersion)
             put("app_version", appVersion)
             put("sdk_version", "1.1.0")
@@ -113,7 +113,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
     ) {
         val json = JSONObject().apply {
             put("provider", subscription.provider)
-            put("environment", subscription.environment)
+            if (subscription.environment.isNotEmpty()) put("environment", subscription.environment)
             put("token", subscription.token)
             put("bundle_id", subscription.bundleId)
         }
@@ -128,10 +128,11 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
     private fun buildRequest(path: String, body: String, method: String = "POST"): Request {
         val requestBody = body.toRequestBody(mediaTypeJson)
 
-        return Request.Builder()
+        val builder = Request.Builder()
             .url("$baseUrl$path")
-            .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
+        if (apiKey.isNotEmpty()) builder.addHeader("Authorization", "Bearer $apiKey")
+        return builder
             .addHeader("User-Agent", "PushPlatform-Android-SDK/1.1.0")
             .method(method, if (method == "POST" || method == "PATCH") requestBody else null)
             .build()

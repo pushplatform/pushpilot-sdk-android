@@ -11,4 +11,4 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: ./gradlew tasks --no-daemon
+      - run: ./gradlew :sdk:testDebugUnitTest --no-daemon

@@ -10,5 +10,6 @@ data class PushConfiguration(
     val environment: Environment = Environment.PRODUCTION,
     val debugMode: Boolean = false,
     val apiBaseUrl: String? = null,
-    val applicationId: String? = null
+    val applicationId: String? = null,
+    val reportedEnvironment: String? = environment.name.lowercase()
 )
