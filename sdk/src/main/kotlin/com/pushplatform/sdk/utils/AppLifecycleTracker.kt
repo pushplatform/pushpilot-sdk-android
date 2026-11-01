@@ -5,7 +5,7 @@ import android.app.Application
 import android.os.Bundle
 import java.util.concurrent.atomic.AtomicInteger
 
-class AppLifecycleTracker(application: Application) {
+class AppLifecycleTracker @JvmOverloads constructor(application: Application, onForeground: () -> Unit = {}) {
 
     private val activityCount = AtomicInteger(0)
 
@@ -18,6 +18,7 @@ class AppLifecycleTracker(application: Application) {
             override fun onActivityStarted(activity: Activity) {
                 if (activityCount.incrementAndGet() == 1) {
                     isInForeground = true
+                    onForeground()
                 }
             }
             override fun onActivityResumed(activity: Activity) {}

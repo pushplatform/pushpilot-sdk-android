@@ -183,3 +183,12 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 `configure()` automatically retrieves the current Firebase token, waits for the backend installation and registers the token using the configured environment and the host application package. Early `onNewToken` callbacks are queued; token rotations are serialized. `didInitialize` reports installation creation; `didUpdateFcmToken` reports successful backend token registration. Failures use `didFailToRegisterFcmToken`. No manual token-registration API call is needed. Firebase configuration and Android notification permission remain host application setup requirements.
 
 See [patch verification](docs/FCM_TOKEN_FIX.md).
+
+
+### Unified application contract (1.1.0)
+
+Use one application ID and its permanent application key on every platform and your server.
+The key is extractable from the client and permits device registration and message sending **only for that application**. It cannot manage the organization or billing. Rotate/revoke it in the console.
+No project or environment selection is required. Existing explicit environment arguments remain supported for compatibility.
+The SDK reports actual model, OS/SDK/app versions, language, time zone, notification permission and device kind. Unknown values remain unknown; emulator/simulator detection is not device attestation. A test subscription is a separate console flag.
+Metadata refreshes on foreground entry and after a permission change.

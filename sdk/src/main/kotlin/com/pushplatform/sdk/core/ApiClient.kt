@@ -43,6 +43,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
         }
     }
 
+    @JvmOverloads
     fun registerInstallation(
         applicationId: String,
         deviceId: String,
@@ -50,6 +51,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
         osVersion: String,
         appVersion: String,
         deviceModel: String,
+        metadata: Map<String, String> = emptyMap(),
         callback: (Result<String>) -> Unit
     ) {
         val json = JSONObject().apply {
@@ -59,8 +61,9 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             put("environment", environment)
             put("os_version", osVersion)
             put("app_version", appVersion)
-            put("sdk_version", "1.0.1")
+            put("sdk_version", "1.1.0")
             put("device_model", deviceModel)
+            listOf("device_kind", "locale", "timezone", "notification_permission").forEach { key -> metadata[key]?.let { put(key, it) } }
         }
         executeRequest(buildRequest("/v1/installations", json.toString())) { result ->
             when (result) {
@@ -129,7 +132,7 @@ class ApiClient(private val apiKey: String, private val baseUrl: String = "https
             .url("$baseUrl$path")
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
-            .addHeader("User-Agent", "PushPlatform-Android-SDK/1.0.1")
+            .addHeader("User-Agent", "PushPlatform-Android-SDK/1.1.0")
             .method(method, if (method == "POST" || method == "PATCH") requestBody else null)
             .build()
     }

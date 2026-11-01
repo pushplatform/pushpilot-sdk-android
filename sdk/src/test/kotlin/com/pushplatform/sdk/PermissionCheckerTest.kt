@@ -76,10 +76,15 @@ class PermissionCheckerPreTiramisuTest {
     }
 
     @Test
-    fun testHasNotificationPermission_preTiramisu_alwaysTrue() {
-        val hasPermission = permissionChecker.hasNotificationPermission()
-
-        assertTrue(hasPermission)
+    fun testHasNotificationPermission_preTiramisu_reflectsSystemSetting() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<Context>()
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val shadow = org.robolectric.Shadows.shadowOf(manager)
+        val checker = PermissionChecker(context)
+        shadow.setNotificationsEnabled(true)
+        assertTrue(checker.hasNotificationPermission())
+        shadow.setNotificationsEnabled(false)
+        assertFalse(checker.hasNotificationPermission())
     }
 
     @Test
