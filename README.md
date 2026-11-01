@@ -50,7 +50,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.0.1")
+    implementation("com.pushplatform:sdk-android:1.1.0")
     
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -68,7 +68,7 @@ class MyApplication : Application() {
         PushPlatform.getInstance().configure(
             context = this,
             apiKey = "pk_your_api_key",
-            environment = Environment.PRODUCTION,
+
             debugMode = BuildConfig.DEBUG
         )
         
