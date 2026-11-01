@@ -2,9 +2,9 @@
 
 Repository URL: https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/
 
-Dependency: com.pushplatform:sdk-android:1.1.0
+Dependency: com.pushplatform:sdk-android:1.2.0
 
-Source: https://github.com/pushplatform/pushpilot-sdk-android/commit/b840fe7579349b528809e109cdaee4bf7aa6879c
+Source: https://github.com/pushplatform/pushpilot-sdk-android/commit/46c76cffaa3e6f6af0f3ef93189cfa85b95d06fb
 
 Release instructions: https://github.com/pushplatform/pushpilot-sdk-android/blob/feat/unified-applications/README.md
 
