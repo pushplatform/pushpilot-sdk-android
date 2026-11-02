@@ -10,6 +10,7 @@ import org.mockito.Mockito.*
 import org.mockito.junit.MockitoJUnitRunner
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.whenever
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -42,7 +43,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -83,7 +84,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -97,7 +98,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(400, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any(), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), isNull(), any())
     }
 
     @Test
@@ -112,7 +113,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -126,7 +127,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(401, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any(), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), isNull(), any())
     }
 
     @Test
@@ -211,7 +212,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), any(), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -238,7 +239,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(""), any(), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(""), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("") {
