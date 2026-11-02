@@ -14,7 +14,7 @@ class UserManager(
     private val baseDelayMs = 1000L
     private val maxDelayMs = 60000L
 
-    fun login(userId: String, callback: (Result<Unit>) -> Unit) {
+    fun login(userId: String, metadata: Map<String, Any?>? = null, callback: (Result<Unit>) -> Unit) {
         val installationId = installationManager.getBackendInstallationId()
 
         if (installationId == null) {
@@ -23,7 +23,7 @@ class UserManager(
             return
         }
 
-        updateUserWithRetry(installationId, userId, 0, callback)
+        updateUserWithRetry(installationId, userId, metadata, 0, callback)
     }
 
     fun logout(callback: (Result<Unit>) -> Unit) {
@@ -35,12 +35,13 @@ class UserManager(
             return
         }
 
-        updateUserWithRetry(installationId, null, 0, callback)
+        updateUserWithRetry(installationId, null, null, 0, callback)
     }
 
     private fun updateUserWithRetry(
         installationId: String,
         userId: String?,
+        metadata: Map<String, Any?>?,
         attempt: Int,
         callback: (Result<Unit>) -> Unit
     ) {
@@ -61,7 +62,7 @@ class UserManager(
                         Logger.debug("Retrying $action in ${delay}ms (attempt ${attempt + 1}/$maxRetries)")
 
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            updateUserWithRetry(installationId, userId, attempt + 1, callback)
+                            updateUserWithRetry(installationId, userId, metadata, attempt + 1, callback)
                         }, delay)
                     } else {
                         val action = if (userId != null) "Login" else "Logout"
@@ -72,7 +73,7 @@ class UserManager(
             }
         }
         if (userId != null) {
-            apiClient.loginUser(installationId, userId, request)
+            apiClient.loginUser(installationId, userId, metadata, request)
         } else {
             apiClient.logoutUser(installationId, request)
         }

@@ -10,6 +10,7 @@ import org.mockito.Mockito.*
 import org.mockito.junit.MockitoJUnitRunner
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.whenever
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -39,10 +40,10 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -80,10 +81,10 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -97,7 +98,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(400, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), isNull(), any())
     }
 
     @Test
@@ -109,10 +110,10 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -126,7 +127,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(401, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), isNull(), any())
     }
 
     @Test
@@ -208,10 +209,10 @@ class UserManagerTest {
         doAnswer { invocation ->
             capturedInstallationId = invocation.getArgument(0)
             capturedUserId = invocation.getArgument(1)
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -235,10 +236,10 @@ class UserManagerTest {
         var capturedUserId: String? = null
         doAnswer { invocation ->
             capturedUserId = invocation.getArgument(1)
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(""), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(""), isNull(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("") {
