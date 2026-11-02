@@ -42,7 +42,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -83,7 +83,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -97,7 +97,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(400, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any(), any())
     }
 
     @Test
@@ -112,7 +112,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Failure(error))
             null
-        }.whenever(apiClient).loginUser(any(), any(), any())
+        }.whenever(apiClient).loginUser(any(), any(), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("user-123") {
@@ -126,7 +126,7 @@ class UserManagerTest {
         assertTrue(resultError is SdkError.ApiError)
         assertEquals(401, (resultError as SdkError.ApiError).statusCode)
 
-        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any())
+        verify(apiClient, times(1)).loginUser(eq(installationId), eq("user-123"), any(), any())
     }
 
     @Test
@@ -211,7 +211,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(userId), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login(userId) {
@@ -238,7 +238,7 @@ class UserManagerTest {
             val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
             callback(ApiClient.Result.Success(Unit))
             null
-        }.whenever(apiClient).loginUser(eq(installationId), eq(""), any())
+        }.whenever(apiClient).loginUser(eq(installationId), eq(""), any(), any())
 
         var result: UserManager.Result<Unit>? = null
         userManager.login("") {
