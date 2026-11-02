@@ -50,7 +50,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.2.2")
+    implementation("com.pushplatform:sdk-android:1.2.3")
     
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))

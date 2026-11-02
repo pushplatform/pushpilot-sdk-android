@@ -11,5 +11,6 @@ data class PushConfiguration(
     val debugMode: Boolean = false,
     val apiBaseUrl: String? = null,
     val applicationId: String? = null,
-    val reportedEnvironment: String? = environment.name.lowercase()
+    val reportedEnvironment: String? = environment.name.lowercase(),
+    val foregroundBannerFallbackSeconds: Double = 0.0
 )

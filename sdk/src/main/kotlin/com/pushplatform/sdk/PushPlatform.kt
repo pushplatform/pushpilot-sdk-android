@@ -48,7 +48,8 @@ class PushPlatform private constructor() {
         val applicationId: String,
         val url: String? = null,
         val environment: Environment? = null,
-        val debugMode: Boolean = false
+        val debugMode: Boolean = false,
+        val foregroundBannerFallback: Double = 0.0
     )
 
     fun initialize(context: Context, applicationId: String, completion: ((Result<String>) -> Unit)? = null) {
@@ -58,6 +59,10 @@ class PushPlatform private constructor() {
     fun initialize(context: Context, options: InitializeOptions, completion: ((Result<String>) -> Unit)? = null) {
         if (configuration != null) {
             completion?.invoke(Result.success(getInstallationId() ?: options.applicationId))
+            return
+        }
+        if (!options.foregroundBannerFallback.isFinite() || options.foregroundBannerFallback < 0) {
+            completion?.invoke(Result.failure(SdkError.ApiError(400, "foregroundBannerFallback must be a non-negative number of seconds")))
             return
         }
         val reported = when {
@@ -73,6 +78,7 @@ class PushPlatform private constructor() {
             apiBaseUrl = options.url ?: DEFAULT_API_BASE_URL,
             applicationId = options.applicationId,
             reportedEnvironment = reported,
+            foregroundBannerFallbackSeconds = options.foregroundBannerFallback,
             completion = completion
         )
     }
@@ -87,6 +93,7 @@ class PushPlatform private constructor() {
         apiBaseUrl: String? = null,
         applicationId: String? = null,
         reportedEnvironment: String? = environment.name.lowercase(),
+        foregroundBannerFallbackSeconds: Double = 0.0,
         completion: ((Result<String>) -> Unit)? = null
     ) {
         val version = configurationVersion.incrementAndGet()
@@ -100,7 +107,8 @@ class PushPlatform private constructor() {
             debugMode = debugMode,
             apiBaseUrl = apiBaseUrl,
             applicationId = applicationId,
-            reportedEnvironment = reportedEnvironment
+            reportedEnvironment = reportedEnvironment,
+            foregroundBannerFallbackSeconds = foregroundBannerFallbackSeconds
         )
 
         val baseUrl = apiBaseUrl ?: DEFAULT_API_BASE_URL
@@ -258,7 +266,9 @@ class PushPlatform private constructor() {
         val display = NotificationDisplay(parsed)
         if (isInForeground) delegate?.notificationWillDisplay(display)
         delegate?.didReceiveNotification(parsed, isInForeground)
-        return display.awaitDecision()
+        val seconds = configuration?.foregroundBannerFallbackSeconds ?: 0.0
+        val timeoutMs = if (seconds > 0) (seconds * 1000).toLong() else null
+        return display.awaitDecision(timeoutMs)
     }
 
     internal fun onNotificationOpened(parsed: ParsedNotification) {
@@ -305,13 +315,17 @@ class NotificationDisplay(val notification: ParsedNotification) {
         latch?.countDown()
     }
 
-    fun awaitDecision(): Boolean {
+    fun awaitDecision(timeoutMs: Long? = null): Boolean {
         val latch = synchronized(lock) {
             if (!deferred || finished) return prevented
             waiter
         }
         try {
-            latch?.await()
+            if (timeoutMs != null && timeoutMs > 0) {
+                latch?.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } else {
+                latch?.await()
+            }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         }
