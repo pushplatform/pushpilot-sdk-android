@@ -50,7 +50,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.1.0")
+    implementation("com.pushplatform:sdk-android:1.2.0")
     
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -65,11 +65,9 @@ class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        PushPlatform.getInstance().configure(
+        PushPlatform.getInstance().initialize(
             context = this,
-            apiKey = "pk_your_api_key",
-
-            debugMode = BuildConfig.DEBUG
+            applicationId = "00000000-0000-4000-8000-000000000000"
         )
         
         PushPlatform.getInstance().delegate = object : PushPlatformDelegate {
@@ -175,8 +173,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ---
 
-**Current Version**: 1.0.1
-**Last Updated**: 2026-10-12
+**Current Version**: 1.2.0
+**Last Updated**: 2026-11-01
 
 ### FCM registration in 1.0.1
 
