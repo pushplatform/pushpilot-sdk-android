@@ -50,7 +50,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.2.3")
+    implementation("com.pushplatform:sdk-android:1.2.4")
     
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -104,6 +104,10 @@ PushPlatform.getInstance().login("user_123") { result ->
     }
 }
 ```
+
+### 5. Notification opens
+
+При клике по уведомлению SDK сам отправляет `PUT /notifications/{id}`, в том числе когда приложение было закрыто и уведомление нарисовала система. Если `initialize` ещё не вызван, открытие ждёт в очереди. Приложению ничего вызывать не нужно. `notification.notificationId` в `didOpenNotification` и `didReceiveNotification` — id из ответа `POST /notifications`; поле `notification_id` не попадает в `customData`. `getSubscriptionId()` возвращает id FCM-подписки после регистрации токена.
 
 ## Documentation
 

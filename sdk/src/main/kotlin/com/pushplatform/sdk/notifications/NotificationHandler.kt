@@ -74,6 +74,7 @@ class NotificationHandler(private val context: Context) {
         intent.putExtra("body", parsed.body)
         intent.putExtra("event_id", parsed.eventId)
         intent.putExtra("call_id", parsed.callId)
+        intent.putExtra(NotificationParser.NOTIFICATION_ID, parsed.notificationId)
         parsed.customData.forEach { (key, value) ->
             intent.putExtra(key, value)
         }

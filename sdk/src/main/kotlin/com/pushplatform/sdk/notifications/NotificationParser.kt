@@ -10,7 +10,9 @@ data class ParsedNotification(
     val tag: String?,
     val eventId: String?,
     val callId: String?,
-    val customData: Map<String, String>
+    val customData: Map<String, String>,
+    /** Server notification id. GET /notifications/{id} reports this notification. */
+    val notificationId: String? = null
 )
 
 class NotificationParser {
@@ -38,18 +40,23 @@ class NotificationParser {
             tag = tag,
             eventId = eventId,
             callId = callId,
-            customData = customData
+            customData = customData,
+            notificationId = data[NOTIFICATION_ID]
         )
     }
 
     private fun extractCustomData(data: Map<String, String>): Map<String, String> {
         val reservedKeys = setOf(
             "title", "body", "image",
-            "channel_id", "tag", "event_id", "call_id"
+            "channel_id", "tag", "event_id", "call_id", NOTIFICATION_ID
         )
 
         return data.filterKeys { key ->
             !reservedKeys.contains(key) && !key.startsWith("gcm.") && !key.startsWith("google.")
         }
+    }
+
+    companion object {
+        const val NOTIFICATION_ID = "notification_id"
     }
 }

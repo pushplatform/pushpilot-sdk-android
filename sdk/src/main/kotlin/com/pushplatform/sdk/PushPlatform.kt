@@ -10,6 +10,7 @@ import com.pushplatform.sdk.core.ApiClient
 import com.pushplatform.sdk.core.FcmTokenManager
 import com.pushplatform.sdk.core.FcmRegistration
 import com.pushplatform.sdk.core.InstallationManager
+import com.pushplatform.sdk.core.NotificationOpenReporter
 import com.pushplatform.sdk.core.SecureStorage
 import com.pushplatform.sdk.core.TokenRegistry
 import com.pushplatform.sdk.core.UserManager
@@ -38,6 +39,7 @@ class PushPlatform private constructor() {
 
     private val configurationVersion = AtomicLong()
     private val tokenLock = Any()
+    private val openReporter = NotificationOpenReporter()
     @Volatile private var fcmRegistration: FcmRegistration? = null
     private var pendingFcmToken: String? = null
 
@@ -118,7 +120,9 @@ class PushPlatform private constructor() {
         secureStorage = SecureStorage(appContext)
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
-        tokenRegistry = TokenRegistry(apiClient!!, secureStorage!!)
+        val registry = TokenRegistry(apiClient!!, secureStorage!!)
+        registry.onSubscriptionId = { openReporter.flush() }
+        tokenRegistry = registry
         fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!, reportedEnvironment ?: "")
         notificationChannelManager = NotificationChannelManager(appContext)
         permissionChecker = PermissionChecker(appContext)
@@ -138,6 +142,7 @@ class PushPlatform private constructor() {
             completion?.invoke(Result.failure(IllegalArgumentException("applicationId is required for installation registration")))
             return
         }
+        openReporter.start(apiClient!!, configuredApplicationId) { registry.getSubscriptionId() }
 
         val manager = installationManager!!
         val registration = FcmRegistration(
@@ -206,6 +211,11 @@ class PushPlatform private constructor() {
         return installationManager?.getBackendInstallationId()
     }
 
+    /** FCM subscription id issued by the server. Notification opens are reported with it. */
+    fun getSubscriptionId(): String? {
+        return tokenRegistry?.getSubscriptionId()
+    }
+
     fun isConfigured(): Boolean {
         return configuration != null
     }
@@ -272,6 +282,7 @@ class PushPlatform private constructor() {
     }
 
     internal fun onNotificationOpened(parsed: ParsedNotification) {
+        parsed.notificationId?.let { openReporter.report(it) }
         delegate?.didOpenNotification(parsed)
     }
 

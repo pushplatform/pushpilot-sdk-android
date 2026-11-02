@@ -112,6 +112,15 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
         subscription: Subscription,
         callback: (Result<Unit>) -> Unit
     ) {
+        registerSubscription(installationId, subscription) { result -> callback(result.map { Unit }) }
+    }
+
+    /** Registers a token and returns the server subscription id, if the response has one. */
+    fun registerSubscription(
+        installationId: String,
+        subscription: Subscription,
+        callback: (Result<String?>) -> Unit
+    ) {
         val json = JSONObject().apply {
             put("provider", subscription.provider)
             if (subscription.environment.isNotEmpty()) put("environment", subscription.environment)
@@ -122,6 +131,25 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
         val request = buildRequest("/v1/installations/$installationId/tokens", json.toString())
 
         executeRequest(request) { result ->
+            callback(result.map { body ->
+                runCatching { JSONObject(body).optString("subscription_id") }.getOrNull()?.takeIf { it.isNotEmpty() }
+            })
+        }
+    }
+
+    /** PUT /notifications/{id}. No key: the application id and subscription id identify the open. */
+    fun reportOpen(
+        notificationId: String,
+        applicationId: String,
+        subscriptionId: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        val json = JSONObject()
+            .put("app_id", applicationId)
+            .put("subscription_id", subscriptionId)
+            .put("opened", true)
+        val path = "/notifications/" + java.net.URLEncoder.encode(notificationId, "UTF-8")
+        executeRequest(buildRequest(path, json.toString(), method = "PUT")) { result ->
             callback(result.map { Unit })
         }
     }
@@ -135,7 +163,7 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
         if (apiKey.isNotEmpty()) builder.addHeader("Authorization", "Bearer $apiKey")
         return builder
             .addHeader("User-Agent", "PushPlatform-Android-SDK/1.1.0")
-            .method(method, if (method == "POST" || method == "PATCH") requestBody else null)
+            .method(method, if (method == "POST" || method == "PATCH" || method == "PUT") requestBody else null)
             .build()
     }
 
