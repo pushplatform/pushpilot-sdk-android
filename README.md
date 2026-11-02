@@ -2,10 +2,10 @@
 
 Repository URL: https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/
 
-Dependency: com.pushplatform:sdk-android:1.2.0
+Dependency: com.pushplatform:sdk-android:1.2.1
 
-Source: https://github.com/pushplatform/pushpilot-sdk-android/commit/46c76cffaa3e6f6af0f3ef93189cfa85b95d06fb
+Source: https://github.com/pushplatform/pushpilot-sdk-android/commit/f902f36649152872b77e601273d6f0018a89eee0
 
-Release instructions: https://github.com/pushplatform/pushpilot-sdk-android/blob/feat/unified-applications/README.md
+Release instructions: https://github.com/pushplatform/pushpilot-sdk-android/blob/main/README.md
 
 Artifacts under versioned paths are immutable. No authentication is needed to install.
