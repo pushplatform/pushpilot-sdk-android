@@ -77,8 +77,9 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
         }
     }
 
-    fun loginUser(installationId: String, userId: String, callback: (Result<Unit>) -> Unit) {
+    fun loginUser(installationId: String, userId: String, metadata: Map<String, Any?>? = null, callback: (Result<Unit>) -> Unit) {
         val json = JSONObject().put("external_user_id", userId)
+        if (metadata != null) json.put("metadata", JSONObject(metadata))
         executeRequest(buildRequest("/v1/installations/$installationId/login", json.toString())) { result ->
             callback(result.map { Unit })
         }

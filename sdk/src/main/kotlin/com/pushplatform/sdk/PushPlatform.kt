@@ -213,8 +213,8 @@ class PushPlatform private constructor() {
         )
     }
 
-    fun login(userId: String, callback: (UserManager.Result<Unit>) -> Unit) {
-        userManager?.login(userId, callback) ?: callback(UserManager.Result.Failure(SdkError.NotConfigured))
+    fun login(userId: String, metadata: Map<String, Any?>? = null, callback: (UserManager.Result<Unit>) -> Unit) {
+        userManager?.login(userId, metadata, callback) ?: callback(UserManager.Result.Failure(SdkError.NotConfigured))
     }
 
     fun logout(callback: (UserManager.Result<Unit>) -> Unit) {
@@ -258,7 +258,7 @@ class PushPlatform private constructor() {
         val display = NotificationDisplay(parsed)
         if (isInForeground) delegate?.notificationWillDisplay(display)
         delegate?.didReceiveNotification(parsed, isInForeground)
-        return display.isPrevented
+        return display.awaitDecision(8_000)
     }
 
     internal fun onNotificationOpened(parsed: ParsedNotification) {
@@ -279,9 +279,44 @@ class PushPlatform private constructor() {
 }
 
 class NotificationDisplay(val notification: ParsedNotification) {
+    private val lock = Any()
     private var prevented = false
-    fun preventDefault() { prevented = true }
-    val isPrevented: Boolean get() = prevented
+    private var deferred = false
+    private var finished = false
+    private var waiter: java.util.concurrent.CountDownLatch? = null
+
+    fun preventDefault() { synchronized(lock) { prevented = true } }
+    val isPrevented: Boolean get() = synchronized(lock) { prevented }
+
+    /** Hold the system banner until finish(). Sync delegates that never call this return immediately. */
+    fun deferDecision() {
+        synchronized(lock) {
+            deferred = true
+            if (waiter == null && !finished) waiter = java.util.concurrent.CountDownLatch(1)
+        }
+    }
+
+    fun finish() {
+        val latch = synchronized(lock) {
+            if (finished) return
+            finished = true
+            waiter
+        }
+        latch?.countDown()
+    }
+
+    fun awaitDecision(timeoutMs: Long): Boolean {
+        val latch = synchronized(lock) {
+            if (!deferred || finished) return prevented
+            waiter
+        }
+        try {
+            latch?.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        return isPrevented
+    }
 }
 
 interface PushPlatformDelegate {

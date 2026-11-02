@@ -1,3 +1,8 @@
+# 1.2.1 — 2026-11-02
+
+- `login(userId, metadata)` отправляет metadata в тело login. Сервер сохраняет её в тегах пользователя.
+- Показ foreground-уведомления можно удержать, пока обработчик не вернётся. `getDeviceToken()` отдаёт последний FCM-токен.
+
 # 1.2.0 — 2026-11-01
 
 - `initialize(context, applicationId)` or `initialize(context, InitializeOptions)` registers the device without a secret key. With no URL the server is https://api.pushpilot.ru.
