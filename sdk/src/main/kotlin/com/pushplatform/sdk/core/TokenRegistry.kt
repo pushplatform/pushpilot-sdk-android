@@ -14,6 +14,12 @@ class TokenRegistry(
     private val baseDelayMs = 1000L
     private val maxDelayMs = 60000L
 
+    /** Called with the FCM subscription id after it is stored. */
+    @Volatile var onSubscriptionId: ((String) -> Unit)? = null
+
+    /** FCM subscription id from the last successful token registration. */
+    fun getSubscriptionId(): String? = storage.getString(KEY_SUBSCRIPTION_ID)
+
     fun registerToken(
         installationId: String,
         provider: String,
@@ -38,10 +44,14 @@ class TokenRegistry(
         attempt: Int,
         callback: (Result<Unit>) -> Unit
     ) {
-        apiClient.createSubscription(installationId, subscription) { result ->
+        apiClient.registerSubscription(installationId, subscription) { result ->
             when (result) {
                 is ApiClient.Result.Success -> {
                     Logger.debug("Token registered successfully on attempt ${attempt + 1}")
+                    val subscriptionId = result.value
+                    if (subscription.provider == "fcm" && subscriptionId != null && storage.putString(KEY_SUBSCRIPTION_ID, subscriptionId)) {
+                        onSubscriptionId?.invoke(subscriptionId)
+                    }
                     callback(Result.Success(Unit))
                 }
                 is ApiClient.Result.Failure -> {
@@ -93,5 +103,9 @@ class TokenRegistry(
     sealed class Result<out T> {
         data class Success<T>(val value: T) : Result<T>()
         data class Failure(val error: com.pushplatform.sdk.models.SdkError) : Result<Nothing>()
+    }
+
+    companion object {
+        const val KEY_SUBSCRIPTION_ID = "subscription_id"
     }
 }
