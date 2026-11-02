@@ -258,7 +258,7 @@ class PushPlatform private constructor() {
         val display = NotificationDisplay(parsed)
         if (isInForeground) delegate?.notificationWillDisplay(display)
         delegate?.didReceiveNotification(parsed, isInForeground)
-        return display.awaitDecision(8_000)
+        return display.awaitDecision()
     }
 
     internal fun onNotificationOpened(parsed: ParsedNotification) {
@@ -305,13 +305,13 @@ class NotificationDisplay(val notification: ParsedNotification) {
         latch?.countDown()
     }
 
-    fun awaitDecision(timeoutMs: Long): Boolean {
+    fun awaitDecision(): Boolean {
         val latch = synchronized(lock) {
             if (!deferred || finished) return prevented
             waiter
         }
         try {
-            latch?.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            latch?.await()
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         }
