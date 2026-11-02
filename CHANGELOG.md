@@ -1,8 +1,14 @@
+# 1.2.0 — 2026-11-01
+
+- `initialize(context, applicationId)` or `initialize(context, InitializeOptions)` registers the device without a secret key. With no URL the server is https://api.pushpilot.ru.
+- Published as `com.pushplatform:sdk-android:1.2.0` from commit `46c76cf` to the public Maven repository on the `maven` branch. Git tag `v1.2.0` points at that commit.
+- The SDK exposes the FCM token and can suppress a foreground notification.
+
 # 1.1.0 — 2026-11-01
 
 - Unified application ID and permanent shared application key for SDK and server; no project/environment setup step.
 - Actual device kind, language, time zone, OS/SDK/app version and notification permission metadata. Unknown facts stay unknown.
-- Optional legacy environment compatibility; iOS defaults to build-entitlement APNs transport detection.
+- Optional legacy environment remains for compatibility. FCM registration uses the Android application, not an APNs entitlement.
 - Test subscription remains a separate console marker.
 
 # Changelog
