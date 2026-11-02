@@ -84,7 +84,7 @@ afterEvaluate {
 
                 groupId = "com.pushplatform"
                 artifactId = "sdk-android"
-                version = "1.2.2"
+                version = "1.2.3"
 
                 pom {
                     name.set("PushPilot Android SDK")
