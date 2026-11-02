@@ -40,7 +40,7 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
         }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
@@ -81,7 +81,7 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Failure(error))
             null
         }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
@@ -110,7 +110,7 @@ class UserManagerTest {
         whenever(installationManager.getBackendInstallationId()).thenReturn(installationId)
 
         doAnswer { invocation ->
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Failure(error))
             null
         }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
@@ -209,7 +209,7 @@ class UserManagerTest {
         doAnswer { invocation ->
             capturedInstallationId = invocation.getArgument(0)
             capturedUserId = invocation.getArgument(1)
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
         }.whenever(apiClient).loginUser(eq(installationId), eq(userId), isNull(), any())
@@ -236,7 +236,7 @@ class UserManagerTest {
         var capturedUserId: String? = null
         doAnswer { invocation ->
             capturedUserId = invocation.getArgument(1)
-            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(2)
+            val callback = invocation.getArgument<(ApiClient.Result<Unit>) -> Unit>(3)
             callback(ApiClient.Result.Success(Unit))
             null
         }.whenever(apiClient).loginUser(eq(installationId), eq(""), isNull(), any())
