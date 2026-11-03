@@ -154,6 +154,23 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
         }
     }
 
+    fun reportReceived(notificationId: String, applicationId: String, subscriptionId: String, callback: (Result<Unit>) -> Unit) {
+        val json = JSONObject().put("app_id", applicationId).put("subscription_id", subscriptionId).put("received", true)
+        val path = "/notifications/" + java.net.URLEncoder.encode(notificationId, "UTF-8")
+        executeRequest(buildRequest(path, json.toString(), method = "PUT")) { callback(it.map { Unit }) }
+    }
+
+    fun resetBadge(applicationId: String, subscriptionId: String, revision: Int?, callback: (Result<Unit>) -> Unit) {
+        val json = JSONObject().put("app_id", applicationId).put("subscription_id", subscriptionId)
+        if (revision != null) json.put("revision", revision)
+        executeRequest(buildRequest("/badge", json.toString(), method = "PUT")) { callback(it.map { Unit }) }
+    }
+
+    fun reportSession(applicationId: String, subscriptionId: String, callback: (Result<Unit>) -> Unit) {
+        val json = JSONObject().put("app_id", applicationId).put("subscription_id", subscriptionId)
+        executeRequest(buildRequest("/session", json.toString(), method = "PUT")) { callback(it.map { Unit }) }
+    }
+
     private fun buildRequest(path: String, body: String, method: String = "POST"): Request {
         val requestBody = body.toRequestBody(mediaTypeJson)
 
