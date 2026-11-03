@@ -2,6 +2,7 @@ package com.pushplatform.sdk
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.pushplatform.sdk.notifications.BadgeCount
 import com.pushplatform.sdk.notifications.DeduplicationCache
 import com.pushplatform.sdk.notifications.NotificationHandler
 import com.pushplatform.sdk.notifications.NotificationParser
@@ -47,6 +48,10 @@ class PushPlatformFcmService : FirebaseMessagingService() {
         // Notify delegate
         val isInForeground = pushPlatform.isAppInForeground()
         val prevented = pushPlatform.onFcmMessageReceived(message, parsed, isInForeground)
+
+        parsed.badge?.let { BadgeCount.apply(applicationContext, it) }
+        parsed.badgeRevision?.let { pushPlatform.saveBadgeRevision(it) }
+        parsed.notificationId?.let { pushPlatform.reportReceived(it) }
 
         val shouldDisplay = !prevented && (parsed.title != null || parsed.body != null)
         if (shouldDisplay) {

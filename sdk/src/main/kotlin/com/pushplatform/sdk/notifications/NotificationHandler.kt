@@ -29,6 +29,7 @@ class NotificationHandler(private val context: Context) {
             .setContentText(parsed.body ?: "")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+        parsed.badge?.let { builder.setNumber(it) }
 
         // Set large icon (image)
         parsed.imageUrl?.let { imageUrl ->

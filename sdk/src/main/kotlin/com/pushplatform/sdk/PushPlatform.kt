@@ -130,7 +130,10 @@ class PushPlatform private constructor() {
 
         // Initialize lifecycle tracker
         if (appContext is Application) {
-            lifecycleTracker = AppLifecycleTracker(appContext) { refreshMetadata() }
+            lifecycleTracker = AppLifecycleTracker(appContext) {
+                refreshMetadata()
+                clearBadgeAndReportSession()
+            }
         }
 
         notificationChannelManager?.createDefaultChannels()
@@ -216,6 +219,26 @@ class PushPlatform private constructor() {
         return tokenRegistry?.getSubscriptionId()
     }
 
+    internal fun saveBadgeRevision(revision: Int) {
+        secureStorage?.putString(KEY_BADGE_REVISION, revision.toString())
+    }
+
+    internal fun reportReceived(notificationId: String) {
+        val appId = configuration?.applicationId ?: return
+        val subscriptionId = tokenRegistry?.getSubscriptionId() ?: return
+        apiClient?.reportReceived(notificationId, appId, subscriptionId) { }
+    }
+
+    private fun clearBadgeAndReportSession() {
+        val context = applicationContext ?: return
+        com.pushplatform.sdk.notifications.BadgeCount.apply(context, 0)
+        val appId = configuration?.applicationId ?: return
+        val subscriptionId = tokenRegistry?.getSubscriptionId() ?: return
+        val revision = secureStorage?.getString(KEY_BADGE_REVISION)?.toIntOrNull()
+        apiClient?.resetBadge(appId, subscriptionId, revision) { }
+        apiClient?.reportSession(appId, subscriptionId) { }
+    }
+
     fun isConfigured(): Boolean {
         return configuration != null
     }
@@ -288,6 +311,7 @@ class PushPlatform private constructor() {
 
     companion object {
         const val DEFAULT_API_BASE_URL = "https://api.pushpilot.ru"
+        private const val KEY_BADGE_REVISION = "badge_revision"
         @Volatile
         private var instance: PushPlatform? = null
 
