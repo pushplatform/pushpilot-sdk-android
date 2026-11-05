@@ -55,9 +55,11 @@ dependencies {
     // HTTP Client
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // Firebase Messaging
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
+    // Pin an explicit artifact+version. Do not publish firebase-messaging-ktx
+    // without a version: consumers on Firebase BoM 34+ (e.g. RN Firebase) drop
+    // the -ktx module from the platform, and Gradle then fails with
+    // "Could not find com.google.firebase:firebase-messaging-ktx:.".
+    implementation("com.google.firebase:firebase-messaging:24.1.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
@@ -84,7 +86,7 @@ afterEvaluate {
 
                 groupId = "com.pushplatform"
                 artifactId = "sdk-android"
-                version = "1.2.5"
+                version = "1.2.6"
 
                 pom {
                     name.set("PushPilot Android SDK")

@@ -1,3 +1,7 @@
+# 1.2.6 — 2026-11-05
+
+- Publish `firebase-messaging` with an explicit version instead of versionless `firebase-messaging-ktx`, so apps on Firebase BoM 34+ (React Native Firebase) can resolve the transitive dependency.
+
 # 1.2.5 — 2026-11-03
 
 - Alert приходит data-only. При закрытом приложении сервис сам показывает баннер, ставит бейдж из `badge` и отправляет `received`.
