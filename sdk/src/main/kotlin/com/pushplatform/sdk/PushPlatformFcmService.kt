@@ -2,61 +2,18 @@ package com.pushplatform.sdk
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.pushplatform.sdk.notifications.BadgeCount
-import com.pushplatform.sdk.notifications.DeduplicationCache
-import com.pushplatform.sdk.notifications.NotificationHandler
-import com.pushplatform.sdk.notifications.NotificationParser
-import com.pushplatform.sdk.utils.Logger
 
+/** Default transport. Hosts with another FCM service call handleRemoteMessage themselves. */
 class PushPlatformFcmService : FirebaseMessagingService() {
-
-    private val parser = NotificationParser()
-    private val deduplicationCache = DeduplicationCache()
-
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Logger.debug("FCM token refreshed: ${Logger.tokenMasked(token)}")
-
-        val pushPlatform = PushPlatform.getInstance()
-        // configure() replays this token once its backend installation exists.
-        pushPlatform.onFcmTokenRefreshed(token)
+        val sdk = PushPlatform.getInstance()
+        sdk.restore(applicationContext)
+        sdk.onFcmTokenRefreshed(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Logger.debug("FCM message received from: ${message.from}")
-
-        val pushPlatform = PushPlatform.getInstance()
-        if (!pushPlatform.isConfigured()) {
-            Logger.debug("SDK not configured, message ignored")
-            return
-        }
-
-        // Parse notification
-        val parsed = parser.parse(message)
-
-        // Check deduplication
-        val eventId = parsed.eventId
-        if (eventId != null) {
-            if (deduplicationCache.contains(eventId)) {
-                Logger.debug("Duplicate event_id detected: $eventId, suppressing notification")
-                return
-            }
-            deduplicationCache.add(eventId)
-        }
-
-        // Notify delegate
-        val isInForeground = pushPlatform.isAppInForeground()
-        val prevented = pushPlatform.onFcmMessageReceived(message, parsed, isInForeground)
-
-        parsed.badge?.let { BadgeCount.apply(applicationContext, it) }
-        parsed.badgeRevision?.let { pushPlatform.saveBadgeRevision(it) }
-        parsed.notificationId?.let { pushPlatform.reportReceived(it) }
-
-        val shouldDisplay = !prevented && (parsed.title != null || parsed.body != null)
-        if (shouldDisplay) {
-            val handler = NotificationHandler(applicationContext)
-            handler.displayNotification(parsed)
-        }
+        PushPlatform.getInstance().handleRemoteMessage(applicationContext, message)
     }
 }

@@ -15,10 +15,11 @@ import com.pushplatform.sdk.notifications.ParsedNotification
 class PushPlatformInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         val application = context?.applicationContext as? Application ?: return true
+        PushPlatform.getInstance().restore(application)
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = deliver(activity.intent)
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) { deliver(activity.intent) }
             override fun onActivityStarted(activity: Activity) {}
-            override fun onActivityResumed(activity: Activity) = deliver(activity.intent)
+            override fun onActivityResumed(activity: Activity) { deliver(activity.intent) }
             override fun onActivityPaused(activity: Activity) {}
             override fun onActivityStopped(activity: Activity) {}
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
@@ -41,12 +42,13 @@ class PushPlatformInitProvider : ContentProvider() {
          * A click on the SDK's own notification carries MARKER. A notification drawn by
          * the system while the app was in background carries the FCM data as extras.
          */
-        fun deliver(intent: Intent?) {
-            if (intent == null || intent.getBooleanExtra(DELIVERED, false)) return
+        fun deliver(intent: Intent?): Boolean {
+            if (intent == null) return false
+            if (intent.getBooleanExtra(DELIVERED, false)) return true
             val ours = intent.getBooleanExtra(MARKER, false)
             val notificationId = intent.getStringExtra(NotificationParser.NOTIFICATION_ID)
             val fromFcm = notificationId != null && intent.hasExtra("google.message_id")
-            if (!ours && !fromFcm) return
+            if (!ours && !fromFcm) return false
             intent.removeExtra(MARKER)
             intent.putExtra(DELIVERED, true)
             val data = intent.extras?.keySet().orEmpty()
@@ -65,6 +67,7 @@ class PushPlatformInitProvider : ContentProvider() {
                     notificationId = notificationId
                 )
             )
+            return true
         }
 
         private val RESERVED = setOf(MARKER, DELIVERED, "title", "body", "from", "collapse_key", NotificationParser.NOTIFICATION_ID)

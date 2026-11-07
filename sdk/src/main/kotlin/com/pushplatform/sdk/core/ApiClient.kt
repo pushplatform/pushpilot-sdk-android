@@ -61,7 +61,7 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
             if (!environment.isNullOrEmpty()) put("environment", environment)
             put("os_version", osVersion)
             put("app_version", appVersion)
-            put("sdk_version", "1.1.0")
+            put("sdk_version", "2.0.0")
             put("device_model", deviceModel)
             listOf("device_kind", "locale", "timezone", "notification_permission").forEach { key -> metadata[key]?.let { put(key, it) } }
         }
@@ -179,7 +179,7 @@ class ApiClient(private val apiKey: String = "", private val baseUrl: String = "
             .addHeader("Content-Type", "application/json")
         if (apiKey.isNotEmpty()) builder.addHeader("Authorization", "Bearer $apiKey")
         return builder
-            .addHeader("User-Agent", "PushPlatform-Android-SDK/1.1.0")
+            .addHeader("User-Agent", "PushPlatform-Android-SDK/2.0.0")
             .method(method, if (method == "POST" || method == "PATCH" || method == "PUT") requestBody else null)
             .build()
     }

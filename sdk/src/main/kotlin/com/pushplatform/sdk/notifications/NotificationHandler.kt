@@ -19,7 +19,7 @@ class NotificationHandler(private val context: Context) {
 
     fun displayNotification(
         parsed: ParsedNotification,
-        notificationId: Int = System.currentTimeMillis().toInt()
+        notificationId: Int = parsed.notificationId?.hashCode() ?: parsed.eventId?.hashCode() ?: System.currentTimeMillis().toInt()
     ) {
         val channelId = parsed.channelId ?: NotificationChannelManager.CHANNEL_ID_DEFAULT
 
@@ -86,7 +86,10 @@ class NotificationHandler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
 
-        return PendingIntent.getActivity(context, 0, intent, flags)
+        // Extras are not part of PendingIntent identity. Keep simultaneous notifications independent.
+        val identity = parsed.notificationId ?: parsed.eventId ?: java.util.UUID.randomUUID().toString()
+        intent.addCategory("com.pushplatform.notification.$identity")
+        return PendingIntent.getActivity(context, identity.hashCode(), intent, flags)
     }
 
     private fun downloadImage(imageUrl: String): Bitmap? {

@@ -1,109 +1,89 @@
 package com.pushplatform.sdk.core
 
 import com.pushplatform.sdk.models.SdkError
-import com.pushplatform.sdk.models.UserUpdate
-import com.pushplatform.sdk.utils.Logger
+import java.util.UUID
 import kotlin.math.pow
 
-class UserManager(
-    private val apiClient: ApiClient,
-    private val installationManager: InstallationManager
-) {
+/** Account changes are serialized; an old retry cannot re-bind an installation after logout. */
+class UserManager(private val apiClient: ApiClient, private val installationManager: InstallationManager) {
+    private data class Operation(
+        val id: String = UUID.randomUUID().toString(),
+        val userId: String?, val metadata: Map<String, Any?>?,
+        var callback: ((Result<Unit>) -> Unit)?, var attempt: Int = 0
+    )
+    private val lock = Any()
+    private var desired: Operation? = null
+    private var inFlightId: String? = null
 
-    private val maxRetries = 5
-    private val baseDelayMs = 1000L
-    private val maxDelayMs = 60000L
+    fun login(userId: String, metadata: Map<String, Any?>? = null, callback: (Result<Unit>) -> Unit) = enqueue(userId, metadata, callback)
+    fun logout(callback: (Result<Unit>) -> Unit) = enqueue(null, null, callback)
 
-    fun login(userId: String, metadata: Map<String, Any?>? = null, callback: (Result<Unit>) -> Unit) {
-        val installationId = installationManager.getBackendInstallationId()
-
-        if (installationId == null) {
-            Logger.error("Cannot login: SDK not configured or installation ID missing")
-            callback(Result.Failure(SdkError.NotConfigured))
-            return
+    private fun enqueue(userId: String?, metadata: Map<String, Any?>?, callback: (Result<Unit>) -> Unit) {
+        if (installationManager.getBackendInstallationId() == null) { callback(Result.Failure(SdkError.NotConfigured)); return }
+        val cancelled = synchronized(lock) {
+            val previous = desired
+            desired = Operation(userId = userId, metadata = metadata, callback = callback)
+            if (previous?.id != inFlightId) previous?.callback else null
         }
-
-        updateUserWithRetry(installationId, userId, metadata, 0, callback)
+        cancelled?.invoke(Result.Failure(SdkError.ApiError(409, "Account operation superseded")))
+        send()
     }
 
-    fun logout(callback: (Result<Unit>) -> Unit) {
-        val installationId = installationManager.getBackendInstallationId()
-
-        if (installationId == null) {
-            Logger.error("Cannot logout: SDK not configured or installation ID missing")
-            callback(Result.Failure(SdkError.NotConfigured))
-            return
-        }
-
-        updateUserWithRetry(installationId, null, null, 0, callback)
+    fun retryPending() {
+        synchronized(lock) { if (inFlightId != null) return; desired?.attempt = 0 }
+        send()
     }
 
-    private fun updateUserWithRetry(
-        installationId: String,
-        userId: String?,
-        metadata: Map<String, Any?>?,
-        attempt: Int,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val request: (ApiClient.Result<Unit>) -> Unit = { result ->
-            when (result) {
-                is ApiClient.Result.Success -> {
-                    val action = if (userId != null) "Login" else "Logout"
-                    Logger.debug("$action successful on attempt ${attempt + 1}")
-                    callback(Result.Success(Unit))
-                }
-                is ApiClient.Result.Failure -> {
-                    val error = result.error
-                    val shouldRetry = shouldRetry(error, attempt)
-
-                    if (shouldRetry) {
-                        val delay = calculateDelay(attempt)
-                        val action = if (userId != null) "login" else "logout"
-                        Logger.debug("Retrying $action in ${delay}ms (attempt ${attempt + 1}/$maxRetries)")
-
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            updateUserWithRetry(installationId, userId, metadata, attempt + 1, callback)
-                        }, delay)
-                    } else {
-                        val action = if (userId != null) "Login" else "Logout"
-                        Logger.error("$action failed permanently: ${error.message}")
-                        callback(Result.Failure(error))
+    private fun send() {
+        val installationId = installationManager.getBackendInstallationId() ?: return
+        val operation = synchronized(lock) {
+            if (inFlightId != null) return
+            val value = desired ?: return
+            inFlightId = value.id
+            value.copy()
+        }
+        val finished: (ApiClient.Result<Unit>) -> Unit = { response ->
+            var callback: ((Result<Unit>) -> Unit)? = null
+            var outcome: Result<Unit>? = null
+            var delay: Long? = null
+            var superseded = false
+            synchronized(lock) {
+                inFlightId = null
+                val latest = desired
+                if (latest?.id != operation.id) {
+                    superseded = true
+                    callback = operation.callback
+                    outcome = Result.Failure(SdkError.ApiError(409, "Account operation superseded"))
+                } else when (response) {
+                    is ApiClient.Result.Success -> { desired = null; callback = latest.callback; outcome = Result.Success(Unit) }
+                    is ApiClient.Result.Failure -> {
+                        val error = response.error
+                        if (isRetryable(error) && latest.attempt < 5) {
+                            delay = (1000 * 2.0.pow(latest.attempt++)).toLong()
+                        } else {
+                            callback = latest.callback
+                            latest.callback = null
+                            outcome = Result.Failure(error)
+                            if (!isRetryable(error)) desired = null
+                        }
                     }
                 }
             }
+            outcome?.let { callback?.invoke(it) }
+            if (superseded) send()
+            delay?.let { wait -> android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                val current = synchronized(lock) { desired?.id == operation.id }
+                if (current) send()
+            }, wait) }
         }
-        if (userId != null) {
-            apiClient.loginUser(installationId, userId, metadata, request)
-        } else {
-            apiClient.logoutUser(installationId, request)
-        }
+        if (operation.userId != null) apiClient.loginUser(installationId, operation.userId, operation.metadata, finished)
+        else apiClient.logoutUser(installationId, finished)
     }
 
-    private fun shouldRetry(error: SdkError, attempt: Int): Boolean {
-        if (attempt >= maxRetries) {
-            return false
-        }
-
-        return when (error) {
-            is SdkError.NetworkError -> true
-            is SdkError.ApiError -> {
-                val statusCode = error.statusCode
-                when {
-                    statusCode == 429 -> true  // Rate limit
-                    statusCode in 500..599 -> true  // Server errors
-                    statusCode == 401 -> false  // Unauthorized - bad API key
-                    statusCode == 400 -> false  // Bad request
-                    else -> false
-                }
-            }
-            is SdkError.NotConfigured -> false
-            else -> false
-        }
-    }
-
-    private fun calculateDelay(attempt: Int): Long {
-        val exponentialDelay = (baseDelayMs * 2.0.pow(attempt)).toLong()
-        return minOf(exponentialDelay, maxDelayMs)
+    private fun isRetryable(error: SdkError) = when(error) {
+        is SdkError.NetworkError -> true
+        is SdkError.ApiError -> error.statusCode == 429 || error.statusCode >= 500
+        else -> false
     }
 
     sealed class Result<out T> {

@@ -3,6 +3,7 @@ package com.pushplatform.sdk
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
@@ -22,6 +23,10 @@ import com.pushplatform.sdk.utils.Logger
 import com.pushplatform.sdk.utils.PermissionChecker
 import com.pushplatform.sdk.utils.DeviceMetadata
 import java.util.concurrent.atomic.AtomicLong
+import com.pushplatform.sdk.notifications.NotificationParser
+import com.pushplatform.sdk.notifications.NotificationHandler
+import com.pushplatform.sdk.notifications.DeduplicationCache
+import com.pushplatform.sdk.notifications.BadgeCount
 
 class PushPlatform private constructor() {
 
@@ -43,7 +48,21 @@ class PushPlatform private constructor() {
     @Volatile private var fcmRegistration: FcmRegistration? = null
     private var pendingFcmToken: String? = null
 
+    private val eventLock = Any()
+    private val pendingOpens = ArrayDeque<ParsedNotification>()
+    private val messageDeduplication = DeduplicationCache()
+    private val initializationLock = Any()
+    private var initializationInProgress = false
+    private var initializationCompleted = false
+    private val initializationCallbacks = mutableListOf<(Result<String>) -> Unit>()
     var delegate: PushPlatformDelegate? = null
+        set(value) {
+            field = value
+            if (value != null) {
+                val events = synchronized(eventLock) { pendingOpens.toList().also { pendingOpens.clear() } }
+                events.forEach { value.didOpenNotification(it) }
+            }
+        }
     private var deviceToken: String? = null
 
     data class InitializeOptions(
@@ -59,9 +78,22 @@ class PushPlatform private constructor() {
     }
 
     fun initialize(context: Context, options: InitializeOptions, completion: ((Result<String>) -> Unit)? = null) {
-        if (configuration != null) {
-            completion?.invoke(Result.success(getInstallationId() ?: options.applicationId))
-            return
+        synchronized(initializationLock) {
+            val current = configuration
+            if (current != null && (current.applicationId != options.applicationId ||
+                (current.apiBaseUrl ?: DEFAULT_API_BASE_URL) != (options.url ?: DEFAULT_API_BASE_URL) ||
+                current.reportedEnvironment != options.environment?.name?.lowercase())) {
+                completion?.invoke(Result.failure(IllegalStateException("SDK is configured for a different application or server")))
+                return
+            }
+            if (initializationCompleted) {
+                val id = getInstallationId()
+                if (id != null) { completion?.invoke(Result.success(id)); return }
+            }
+            if (initializationInProgress) {
+                completion?.let { initializationCallbacks.add(it) }
+                return
+            }
         }
         if (!options.foregroundBannerFallback.isFinite() || options.foregroundBannerFallback < 0) {
             completion?.invoke(Result.failure(SdkError.ApiError(400, "foregroundBannerFallback must be a non-negative number of seconds")))
@@ -69,7 +101,6 @@ class PushPlatform private constructor() {
         }
         val reported = when {
             options.environment != null -> options.environment.name.lowercase()
-            options.url != null -> "development"
             else -> null
         }
         configure(
@@ -85,7 +116,8 @@ class PushPlatform private constructor() {
         )
     }
 
-    fun getDeviceToken(): String? = deviceToken
+    fun getDeviceToken(): String? = deviceToken ?: fcmTokenManager?.getToken()
+    fun getServerURL(): String = configuration?.apiBaseUrl ?: DEFAULT_API_BASE_URL
 
     fun configure(
         context: Context,
@@ -98,6 +130,11 @@ class PushPlatform private constructor() {
         foregroundBannerFallbackSeconds: Double = 0.0,
         completion: ((Result<String>) -> Unit)? = null
     ) {
+        synchronized(initializationLock) {
+            initializationInProgress = true
+            initializationCompleted = false
+            completion?.let { initializationCallbacks.add(it) }
+        }
         val version = configurationVersion.incrementAndGet()
         fcmRegistration = null
         Logger.debugMode = debugMode
@@ -118,6 +155,14 @@ class PushPlatform private constructor() {
         val appContext = context.applicationContext
         applicationContext = appContext
         secureStorage = SecureStorage(appContext)
+        val scope = "$baseUrl|$applicationId|${reportedEnvironment ?: "production"}"
+        val previousScope = secureStorage!!.getString("registration_scope")
+        if (previousScope != null && previousScope != scope) {
+            secureStorage!!.remove("backend_installation_id")
+            secureStorage!!.remove("subscription_id")
+            secureStorage!!.remove(KEY_BADGE_REVISION)
+        }
+        secureStorage!!.putString("registration_scope", scope)
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
         val registry = TokenRegistry(apiClient!!, secureStorage!!)
@@ -132,17 +177,22 @@ class PushPlatform private constructor() {
         if (appContext is Application) {
             lifecycleTracker = AppLifecycleTracker(appContext) {
                 refreshMetadata()
+                userManager?.retryPending()
+                fcmRegistration?.retryPending()
                 clearBadgeAndReportSession()
             }
         }
 
         notificationChannelManager?.createDefaultChannels()
+        if (applicationId != null && apiKey.isEmpty()) {
+            RuntimeConfigurationStore(appContext).save(configuration!!)
+        }
 
         val deviceId = installationManager!!.getOrCreateInstallationId()
         val configuredApplicationId = applicationId
         if (configuredApplicationId == null) {
             Logger.info("SDK configured with local device ID: $deviceId")
-            completion?.invoke(Result.failure(IllegalArgumentException("applicationId is required for installation registration")))
+            finishInitialization(Result.failure(IllegalArgumentException("applicationId is required for installation registration")))
             return
         }
         openReporter.start(apiClient!!, configuredApplicationId) { registry.getSubscriptionId() }
@@ -151,7 +201,7 @@ class PushPlatform private constructor() {
         val registration = FcmRegistration(
             fcmTokenManager!!, appContext.packageName,
             isCurrent = { configurationVersion.get() == version },
-            updated = { delegate?.didUpdateFcmToken() },
+            updated = { deviceToken = fcmTokenManager?.getToken(); delegate?.didUpdateFcmToken() },
             failed = { delegate?.didFailToRegisterFcmToken(it) }
         )
         synchronized(tokenLock) {
@@ -188,9 +238,9 @@ class PushPlatform private constructor() {
                     registration.installationReady(result.value)
                     Logger.info("SDK configured with installation ID: ${result.value}")
                     delegate?.didInitialize(result.value)
-                    completion?.invoke(Result.success(result.value))
+                    finishInitialization(Result.success(result.value))
                 }
-                is ApiClient.Result.Failure -> completion?.invoke(Result.failure(result.error))
+                is ApiClient.Result.Failure -> finishInitialization(Result.failure(result.error))
             }
         }
     }
@@ -280,6 +330,9 @@ class PushPlatform private constructor() {
         return configuration ?: throw SdkError.NotConfigured
     }
 
+    /** Forward onNewToken when the application owns its FirebaseMessagingService. */
+    fun registerFcmToken(token: String) = onFcmTokenRefreshed(token)
+
     internal fun onFcmTokenRefreshed(token: String) {
         deviceToken = token
         delegate?.didUpdateDeviceToken(token)
@@ -300,13 +353,68 @@ class PushPlatform private constructor() {
         if (isInForeground) delegate?.notificationWillDisplay(display)
         delegate?.didReceiveNotification(parsed, isInForeground)
         val seconds = configuration?.foregroundBannerFallbackSeconds ?: 0.0
-        val timeoutMs = if (seconds > 0) (seconds * 1000).toLong() else null
+        val timeoutMs = if (seconds > 0) (seconds * 1000).toLong() else 3000L
         return display.awaitDecision(timeoutMs)
     }
 
+    /** Forward Activity.onNewIntent for notification taps while an existing activity is running. */
+    fun handleNotificationIntent(intent: Intent?): Boolean = PushPlatformInitProvider.deliver(intent)
+
     internal fun onNotificationOpened(parsed: ParsedNotification) {
         parsed.notificationId?.let { openReporter.report(it) }
-        delegate?.didOpenNotification(parsed)
+        val receiver = delegate
+        if (receiver != null) receiver.didOpenNotification(parsed)
+        else synchronized(eventLock) {
+            if (pendingOpens.size >= 100) pendingOpens.removeFirst()
+            pendingOpens.addLast(parsed)
+        }
+    }
+
+    private fun finishInitialization(result: Result<String>) {
+        val callbacks = synchronized(initializationLock) {
+            initializationInProgress = false
+            initializationCompleted = result.isSuccess
+            initializationCallbacks.toList().also { initializationCallbacks.clear() }
+        }
+        callbacks.forEach { it(result) }
+    }
+
+    /** Restore native processing before React Native / Flutter starts. No secret key is persisted. */
+    @Synchronized
+    fun restore(context: Context): Boolean {
+        if (configuration != null) return true
+        val config = RuntimeConfigurationStore(context).load() ?: return false
+        configure(context, apiKey = "", environment = config.environment, apiBaseUrl = config.apiBaseUrl,
+            applicationId = config.applicationId, reportedEnvironment = config.reportedEnvironment,
+            foregroundBannerFallbackSeconds = config.foregroundBannerFallbackSeconds)
+        return true
+    }
+
+    /** Integrate an existing FirebaseMessagingService without replacing it.
+     * Return false for messages that do not belong to PushPilot.
+     * Set displayNotification=false when the host owns the UI (for example calls).
+     */
+    fun handleRemoteMessage(context: Context, message: RemoteMessage, displayNotification: Boolean = true): Boolean {
+        if (!message.data.containsKey("notification_id")) return false
+        restore(context)
+        val parsed = NotificationParser().parse(message)
+        val key = parsed.notificationId ?: parsed.eventId
+        if (key != null) {
+            synchronized(messageDeduplication) {
+                if (messageDeduplication.contains(key)) return true
+                messageDeduplication.add(key)
+            }
+        }
+        val foreground = isAppInForeground()
+        val prevented = onFcmMessageReceived(message, parsed, foreground)
+        parsed.badge?.let { BadgeCount.apply(context.applicationContext, it) }
+        parsed.badgeRevision?.let { saveBadgeRevision(it) }
+        parsed.notificationId?.let { reportReceived(it) }
+        if (displayNotification && !prevented && (parsed.title != null || parsed.body != null)) {
+            NotificationChannelManager(context.applicationContext).createDefaultChannels()
+            NotificationHandler(context.applicationContext).displayNotification(parsed)
+        }
+        return true
     }
 
     companion object {
