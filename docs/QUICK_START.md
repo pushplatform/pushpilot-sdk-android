@@ -68,7 +68,7 @@ No GitHub authentication, SDK checkout, or Maven Local is needed.
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.0.0")
+    implementation("com.pushplatform:sdk-android:2.0.1")
 }
 ```
 
