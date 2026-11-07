@@ -2,7 +2,7 @@ package com.pushplatform.sdk.models
 
 sealed class SdkError : Exception() {
     object NotConfigured : SdkError() {
-        override val message: String = "SDK not configured. Call PushPlatform.configure() first."
+        override val message: String = "SDK not configured. Call PushPlatform.getInstance().initialize() first."
     }
 
     data class NetworkError(val underlying: Throwable) : SdkError() {
