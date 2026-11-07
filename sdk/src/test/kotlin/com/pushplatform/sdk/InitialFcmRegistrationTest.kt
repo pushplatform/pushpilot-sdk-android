@@ -110,7 +110,7 @@ class InitialFcmRegistrationTest {
     @Test fun `service token before configure is replayed after installation exists`() {
         val pending = TaskCompletionSource<String>()
         whenever(firebase.token).thenReturn(pending.task)
-        PushPlatformFcmService().onNewToken("early-fcm-token")
+        org.robolectric.Robolectric.buildService(PushPlatformFcmService::class.java).create().get().onNewToken("early-fcm-token")
         assertEquals(0, server.requestCount)
         server.enqueue(installationResponse()); server.enqueue(tokenResponse())
         configure(Environment.PRODUCTION)
@@ -127,7 +127,7 @@ class InitialFcmRegistrationTest {
         whenever(firebase.token).thenReturn(pending.task)
         configure()
         assertEquals("/v1/installations", request().path)
-        PushPlatformFcmService().onNewToken("rotated-fcm-token")
+        org.robolectric.Robolectric.buildService(PushPlatformFcmService::class.java).create().get().onNewToken("rotated-fcm-token")
         pending.setResult("stale-query-token")
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(1, server.requestCount)
@@ -142,7 +142,7 @@ class InitialFcmRegistrationTest {
         configure(Environment.PRODUCTION)
         request(); awaitCondition { events.contains("registered") }
         assertToken(request(), "existing-fcm-token", "production")
-        PushPlatformFcmService().onNewToken("next-fcm-token")
+        org.robolectric.Robolectric.buildService(PushPlatformFcmService::class.java).create().get().onNewToken("next-fcm-token")
         awaitCondition { events.count { it == "registered" } == 2 }
         assertToken(request(), "next-fcm-token", "production")
     }
@@ -155,7 +155,7 @@ class InitialFcmRegistrationTest {
         request()
         awaitCondition { server.requestCount == 2 }
         assertToken(request(), "existing-fcm-token", "development")
-        PushPlatformFcmService().onNewToken("latest-fcm-token")
+        org.robolectric.Robolectric.buildService(PushPlatformFcmService::class.java).create().get().onNewToken("latest-fcm-token")
         awaitCondition { events.contains("registered") }
         assertToken(request(), "latest-fcm-token", "development")
         assertEquals(1, events.count { it == "registered" })

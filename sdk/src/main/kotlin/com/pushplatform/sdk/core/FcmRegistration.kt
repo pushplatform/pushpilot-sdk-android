@@ -49,6 +49,8 @@ internal class FcmRegistration(
         registerLatest()
     }
 
+    fun retryPending() = registerLatest()
+
     private fun accept(value: String): Boolean {
         if (value.isBlank()) return false
         token = value

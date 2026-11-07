@@ -21,7 +21,7 @@ class PushPlatformFcmServiceTest {
 
     @Before
     fun setup() {
-        service = PushPlatformFcmService()
+        service = org.robolectric.Robolectric.buildService(PushPlatformFcmService::class.java).create().get()
         mockPushPlatform = mock()
     }
 

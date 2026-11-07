@@ -32,6 +32,33 @@ class UserManagerTest {
     }
 
     @Test
+    fun `latest account change is written after an older in flight login`() {
+        whenever(installationManager.getBackendInstallationId()).thenReturn("installation")
+        val accounts = mutableListOf<String>()
+        val callbacks = mutableListOf<(ApiClient.Result<Unit>) -> Unit>()
+        doAnswer { invocation ->
+            accounts.add(invocation.getArgument<String>(1))
+            callbacks.add(invocation.getArgument(3))
+            null
+        }.whenever(apiClient).loginUser(any(), any(), isNull(), any())
+        doAnswer { invocation ->
+            accounts.add("<logout>")
+            callbacks.add(invocation.getArgument(1))
+            null
+        }.whenever(apiClient).logoutUser(any(), any())
+        var completed = 0
+        userManager.login("old") { assertTrue(it is UserManager.Result.Failure); completed++ }
+        userManager.login("intermediate") { assertTrue(it is UserManager.Result.Failure); completed++ }
+        userManager.logout { assertTrue(it is UserManager.Result.Success); completed++ }
+        assertEquals(listOf("old"), accounts)
+        assertEquals(1, completed)
+        callbacks[0](ApiClient.Result.Success(Unit))
+        assertEquals(listOf("old", "<logout>"), accounts)
+        callbacks[1](ApiClient.Result.Success(Unit))
+        assertEquals(3, completed)
+    }
+
+    @Test
     fun `login succeeds on successful API call`() {
         val latch = CountDownLatch(1)
         val installationId = "test-installation-id"
