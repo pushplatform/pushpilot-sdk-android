@@ -11,9 +11,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Read the checked-in Gradle version
+        id: gradle_version
+        run: |
+          pushpilot_gradle_version=$(sed -nE 's/^distributionUrl=.*\/gradle-(.+)-(bin|all)\.zip$/\1/p' gradle/wrapper/gradle-wrapper.properties)
+          test -n "$pushpilot_gradle_version"
+          printf 'value=%s\n' "$pushpilot_gradle_version" >> "$GITHUB_OUTPUT"
       - name: Set up the checked-in Gradle version
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: wrapper
+          gradle-version: ${{ steps.gradle_version.outputs.value }}
           cache-provider: basic
       - run: gradle :sdk:testDebugUnitTest --no-daemon
