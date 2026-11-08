@@ -197,7 +197,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ---
 
-**Current Version**: 2.0.1
+**Current Version**: 2.0.2
 **Last Updated**: 2026-11-01
 
 ### FCM registration
