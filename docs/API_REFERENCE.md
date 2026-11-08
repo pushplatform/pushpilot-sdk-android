@@ -1,4 +1,4 @@
-# Android API — SDK 2.0.2
+# Android API — SDK 2.0.3
 
 Основной объект — `PushPlatform.getInstance()`.
 
