@@ -4,11 +4,16 @@ plugins {
     id("maven-publish")
 }
 
+val sdkVersion = rootProject.file("VERSION").readText().trim()
+
 android {
     namespace = "com.pushplatform.sdk"
     compileSdk = 34
 
+    buildFeatures { buildConfig = true }
+
     defaultConfig {
+        buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
         minSdk = 21
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -86,7 +91,7 @@ afterEvaluate {
 
                 groupId = "com.pushplatform"
                 artifactId = "sdk-android"
-                version = "2.0.0"
+                version = sdkVersion
 
                 pom {
                     name.set("PushPilot Android SDK")

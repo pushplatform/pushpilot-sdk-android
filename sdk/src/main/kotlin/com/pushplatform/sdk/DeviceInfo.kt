@@ -34,7 +34,7 @@ internal object DeviceInfo {
     fun createInstallation(
         installationId: String,
         appVersion: String = "1.0.0",
-        sdkVersion: String = "2.0.0"
+        sdkVersion: String = BuildConfig.SDK_VERSION
     ): Installation {
         return Installation(
             installationId = installationId,

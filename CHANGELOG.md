@@ -1,5 +1,9 @@
 # 1.2.6 — 2026-11-05
 
+## 2.0.1
+
+Use one VERSION for Maven artifacts, runtime metadata, User-Agent and publication tooling; align current integration documentation.
+
 - Publish `firebase-messaging` with an explicit version instead of versionless `firebase-messaging-ktx`, so apps on Firebase BoM 34+ (React Native Firebase) can resolve the transitive dependency.
 
 # 1.2.5 — 2026-11-03

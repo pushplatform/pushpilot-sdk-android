@@ -50,8 +50,8 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:1.2.6")
-    
+    implementation("com.pushplatform:sdk-android:2.0.1")
+
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-messaging")
@@ -64,17 +64,17 @@ dependencies {
 class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        
+
         PushPlatform.getInstance().initialize(
             context = this,
             applicationId = "00000000-0000-4000-8000-000000000000"
         )
-        
+
         PushPlatform.getInstance().delegate = object : PushPlatformDelegate {
             override fun didInitialize(installationId: String) {
                 Log.d("Push", "Initialized: $installationId")
             }
-            
+
             override fun didReceiveNotification(
                 notification: ParsedNotification,
                 isInForeground: Boolean
@@ -177,17 +177,17 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ---
 
-**Current Version**: 1.2.0
+**Current Version**: 2.0.1
 **Last Updated**: 2026-11-01
 
-### FCM registration in 1.0.1
+### FCM registration
 
 `configure()` automatically retrieves the current Firebase token, waits for the backend installation and registers the token using the configured environment and the host application package. Early `onNewToken` callbacks are queued; token rotations are serialized. `didInitialize` reports installation creation; `didUpdateFcmToken` reports successful backend token registration. Failures use `didFailToRegisterFcmToken`. No manual token-registration API call is needed. Firebase configuration and Android notification permission remain host application setup requirements.
 
 See [patch verification](docs/FCM_TOKEN_FIX.md).
 
 
-### Unified application contract (1.1.0)
+### Unified application contract
 
 Use one application ID and its permanent application key on every platform and your server.
 The key is extractable from the client and permits device registration and message sending **only for that application**. It cannot manage the organization or billing. Rotate/revoke it in the console.
