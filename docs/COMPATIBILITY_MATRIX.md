@@ -1,4 +1,4 @@
-# Compatibility — Android SDK 2.0.2
+# Compatibility — Android SDK 2.0.3
 
 Build requirements and dependencies are defined in `sdk/build.gradle.kts`:
 
