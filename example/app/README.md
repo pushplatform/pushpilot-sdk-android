@@ -59,11 +59,12 @@ Example Android application demonstrating PushPlatform SDK integration.
 
 Enable debug logs in `ExampleApplication.kt`:
 ```kotlin
-PushPlatform.getInstance().configure(
-    context = this,
-    apiKey = "pk_...",
-    environment = Environment.DEVELOPMENT,
-    debugMode = true  // Enable debug logs
+PushPlatform.getInstance().initialize(
+    this,
+    PushPlatform.InitializeOptions(
+        applicationId = "YOUR_APPLICATION_UUID",
+        debugMode = true
+    )
 )
 ```
 

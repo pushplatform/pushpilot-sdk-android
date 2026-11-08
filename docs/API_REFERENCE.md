@@ -5,13 +5,11 @@
 ## Инициализация
 
 ```kotlin
-PushPlatform.getInstance().initialize(
-    context,
+PushPlatform.getInstance().initialize(context,
     PushPlatform.InitializeOptions(
         applicationId = "YOUR_APPLICATION_UUID",
-        url = "https://api.pushpilot.ru"
-    )
-) { result ->
+        debugMode = false
+    )) { result ->
     result.onFailure { error -> /* Handle registration error */ }
 }
 ```
