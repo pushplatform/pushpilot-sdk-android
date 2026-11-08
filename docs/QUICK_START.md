@@ -14,7 +14,7 @@ maven {
 В dependencies приложения:
 
 ```kotlin
-implementation("com.pushplatform:sdk-android:2.0.1")
+implementation("com.pushplatform:sdk-android:[2.0.0,3.0)")
 ```
 
 Подключите Firebase google-services.json своего приложения и Google Services
@@ -29,7 +29,7 @@ PushPlatform.getInstance().initialize(
     this,
     PushPlatform.InitializeOptions(
         applicationId = "YOUR_APPLICATION_UUID",
-        url = "https://api.pushpilot.ru"
+        debugMode = false
     )
 ) { result ->
     result.onFailure { error -> /* Handle registration error */ }
