@@ -5,6 +5,23 @@
 
 Native Android SDK for PushPlatform - a modern, production-ready push notification platform.
 
+## Формы инициализации
+
+Выполните один из вариантов один раз при запуске приложения.
+`debugMode: true` включает диагностику; для обычной работы используйте `false`.
+
+```kotlin
+PushPlatform.getInstance().initialize(
+    this,
+    PushPlatform.InitializeOptions(
+        applicationId = "YOUR_APPLICATION_UUID",
+        debugMode = true
+    )
+)
+
+PushPlatform.getInstance().initialize(this, "YOUR_APPLICATION_UUID")
+```
+
 ## Features
 
 - **FCM Integration**: Seamless Firebase Cloud Messaging support
@@ -50,7 +67,7 @@ The package and API names remain `com.pushplatform:sdk-android` and `PushPlatfor
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:2.0.1")
+    implementation("com.pushplatform:sdk-android:[2.0.0,3.0)")
 
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -66,8 +83,11 @@ class MyApplication : Application() {
         super.onCreate()
 
         PushPlatform.getInstance().initialize(
-            context = this,
-            applicationId = "00000000-0000-4000-8000-000000000000"
+            this,
+            PushPlatform.InitializeOptions(
+                applicationId = "YOUR_APPLICATION_UUID",
+                debugMode = false
+            )
         )
 
         PushPlatform.getInstance().delegate = object : PushPlatformDelegate {
@@ -189,8 +209,7 @@ See [patch verification](docs/FCM_TOKEN_FIX.md).
 
 ### Unified application contract
 
-Use one application ID and its permanent application key on every platform and your server.
-The key is extractable from the client and permits device registration and message sending **only for that application**. It cannot manage the organization or billing. Rotate/revoke it in the console.
+Use the same application ID in SDKs on every platform. Device registration does not require a secret key. Keep the permanent application key in server code for sending notifications; rotate or revoke it in the console.
 No project or environment selection is required. Existing explicit environment arguments remain supported for compatibility.
 The SDK reports actual model, OS/SDK/app versions, language, time zone, notification permission and device kind. Unknown values remain unknown; emulator/simulator detection is not device attestation. A test subscription is a separate console flag.
 Metadata refreshes on foreground entry and after a permission change.

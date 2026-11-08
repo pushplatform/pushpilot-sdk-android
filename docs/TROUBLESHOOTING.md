@@ -2,14 +2,14 @@
 
 ## Версия и зависимости
 
-Maven-координата — com.pushplatform:sdk-android:2.0.1. Проверьте её в dependency
+Maven-координата — com.pushplatform:sdk-android:[2.0.0,3.0). Проверьте её в dependency
 report Gradle. Публичный Maven-репозиторий SDK добавляется отдельно от google()
 и mavenCentral(); инструкция приведена в README.md. Версия runtime metadata
 и User-Agent берётся из BuildConfig.SDK_VERSION, формируемого из VERSION.
 
 ## Инициализация и токен
 
-Вызывайте initialize в Application.onCreate с UUID приложения и API URL.
+Вызывайте initialize в Application.onCreate с UUID приложения PushPilot.
 Секретный ключ отправки в клиенте не требуется. Проверьте completion регистрации:
 выдача FCM-токена ещё не означает готовую backend-подписку. При недоступности сети
 SDK повторяет регистрацию после восстановления соединения.
