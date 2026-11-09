@@ -20,7 +20,7 @@ dependencyResolutionManagement {
             forRepository {
                 maven { url = uri("https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/") }
             }
-            filter { includeModule("com.pushplatform", "sdk-android") }
+            filter { includeModule("ru.pushplatform", "sdk-android") }
         }
     }
 }
@@ -58,7 +58,7 @@ android {
     }
     kotlinOptions { jvmTarget = "11" }
 }
-dependencies { implementation("com.pushplatform:sdk-android:1.0.1") }
+dependencies { implementation("ru.pushplatform:sdk-android:2.0.4") }
 EOF
 cat > "$consumer/app/src/main/AndroidManifest.xml" <<'EOF'
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">

@@ -4,7 +4,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 staging="$root/build/maven-repository"
 sdk_version=$(tr -d '\r\n' < "$root/VERSION")
-coordinate="com/pushplatform/sdk-android/$sdk_version"
+coordinate="ru/pushplatform/sdk-android/$sdk_version"
 remote="https://github.com/pushplatform/pushpilot-sdk-android.git"
 source_commit=$(git -C "$root" rev-parse HEAD)
 if [[ -n $(git -C "$root" status --porcelain --untracked-files=no) ]]; then
@@ -44,7 +44,7 @@ python3 - "$repository/$(dirname "$coordinate")" <<'PYMETA'
 from pathlib import Path
 import datetime,hashlib,sys,xml.etree.ElementTree as ET
 folder=Path(sys.argv[1]);versions=sorted((p.name for p in folder.iterdir() if p.is_dir()),key=lambda v:tuple(map(int,v.split('.'))))
-root=ET.Element('metadata');ET.SubElement(root,'groupId').text='com.pushplatform';ET.SubElement(root,'artifactId').text='sdk-android'
+root=ET.Element('metadata');ET.SubElement(root,'groupId').text='ru.pushplatform';ET.SubElement(root,'artifactId').text='sdk-android'
 node=ET.SubElement(root,'versioning');ET.SubElement(node,'latest').text=versions[-1];ET.SubElement(node,'release').text=versions[-1]
 entries=ET.SubElement(node,'versions')
 for version in versions:ET.SubElement(entries,'version').text=version
@@ -58,7 +58,7 @@ cat > "$repository/README.md" <<EOF
 
 Repository URL: https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/
 
-Dependency: com.pushplatform:sdk-android:$sdk_version
+Dependency: ru.pushplatform:sdk-android:$sdk_version
 
 Source: https://github.com/pushplatform/pushpilot-sdk-android/commit/$source_commit
 

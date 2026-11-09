@@ -1,4 +1,4 @@
-# Выпуск SDK 2.0.3
+# Выпуск SDK 2.0.4
 
 Версии пакета, нативных зависимостей и runtime metadata должны совпадать.
 Инструкции установки и настройки приложения находятся в README.md;
@@ -10,7 +10,7 @@
 ./gradlew :sdk:testDebugUnitTest :sdk:assembleRelease :sdk:publishReleasePublicationToReleaseStagingRepository
 ```
 
-После проверки и коммита выполните `scripts/publish-maven.sh --prepared`.
+После проверки и коммита выполните `bash scripts/publish-maven.sh --prepared`.
 Скрипт берёт версию из `VERSION`, проверяет комплект артефактов и публикует новую
 координату в публичную ветку `maven`. Существующие версии не перезаписываются.
 

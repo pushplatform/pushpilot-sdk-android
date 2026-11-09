@@ -89,7 +89,7 @@ afterEvaluate {
                 from(components["release"])
                 artifact(documentationJar)
 
-                groupId = "com.pushplatform"
+                groupId = "ru.pushplatform"
                 artifactId = "sdk-android"
                 version = sdkVersion
 

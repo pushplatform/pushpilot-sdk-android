@@ -1,4 +1,4 @@
-# Быстрый старт — Android SDK 2.0.3
+# Быстрый старт — Android SDK 2.0.4
 
 ## Зависимости
 
@@ -7,14 +7,14 @@
 ```kotlin
 maven {
     url = uri("https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/")
-    content { includeModule("com.pushplatform", "sdk-android") }
+    content { includeModule("ru.pushplatform", "sdk-android") }
 }
 ```
 
 В dependencies приложения:
 
 ```kotlin
-implementation("com.pushplatform:sdk-android:[2.0.0,3.0)")
+implementation("ru.pushplatform:sdk-android:[2.0.4,3.0)")
 ```
 
 Подключите Firebase google-services.json своего приложения и Google Services

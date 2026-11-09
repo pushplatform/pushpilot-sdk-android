@@ -61,7 +61,7 @@ Android permissions и системного calling API приложения.
 
 - React Native: `npm install @pushplatform/react-native`.
 - Flutter: `flutter pub add push_platform_flutter`.
-- Android: `implementation("com.pushplatform:sdk-android:[2.0.0,3.0)")`.
+- Android: `implementation("ru.pushplatform:sdk-android:[2.0.4,3.0)")`.
 - iOS: Swift Package Manager с совместимым диапазоном 2.x или CocoaPods:
 
 ```ruby
