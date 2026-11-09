@@ -54,7 +54,7 @@ dependencyResolutionManagement {
         mavenCentral()
         maven {
             url = uri("https://raw.githubusercontent.com/pushplatform/pushpilot-sdk-android/maven/")
-            content { includeModule("com.pushplatform", "sdk-android") }
+            content { includeModule("ru.pushplatform", "sdk-android") }
         }
     }
 }
@@ -62,12 +62,12 @@ dependencyResolutionManagement {
 
 The SDK is published in this public Maven repository, not Maven Central.
 No GitHub credentials, local SDK checkout, or Maven Local setup are required.
-The package and API names remain `com.pushplatform:sdk-android` and `PushPlatform`.
+Maven coordinate: `ru.pushplatform:sdk-android`. Kotlin/Java packages remain `com.pushplatform.sdk`; the API remains `PushPlatform`.
 
 
 ```kotlin
 dependencies {
-    implementation("com.pushplatform:sdk-android:[2.0.0,3.0)")
+    implementation("ru.pushplatform:sdk-android:[2.0.4,3.0)")
 
     // Firebase (if not already included)
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -184,8 +184,8 @@ Consumer rules are automatically applied. No manual configuration needed.
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/pushplatform/pushpilot-sdk-android/issues)
-- **Email**: support@pushplatform.com
-- **Docs**: https://docs.pushplatform.com
+- **Email**: support@pushplatform.ru
+- **Docs**: https://docs.pushplatform.ru
 
 ## License
 
@@ -197,7 +197,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ---
 
-**Current Version**: 2.0.3
+**Current Version**: 2.0.4
 **Last Updated**: 2026-11-01
 
 ### FCM registration

@@ -30,7 +30,8 @@ import com.pushplatform.sdk.notifications.BadgeCount
 
 class PushPlatform private constructor() {
 
-    private var configuration: PushConfiguration? = null
+    @Volatile private var configuration: PushConfiguration? = null
+    private var configurationWasRestored = false
     private var applicationContext: Context? = null
     private var secureStorage: SecureStorage? = null
     private var installationManager: InstallationManager? = null
@@ -51,7 +52,6 @@ class PushPlatform private constructor() {
     private val eventLock = Any()
     private val pendingOpens = ArrayDeque<ParsedNotification>()
     private val messageDeduplication = DeduplicationCache()
-    private val initializationLock = Any()
     private var initializationInProgress = false
     private var initializationCompleted = false
     private val initializationCallbacks = mutableListOf<(Result<String>) -> Unit>()
@@ -77,15 +77,32 @@ class PushPlatform private constructor() {
         initialize(context, InitializeOptions(applicationId), completion)
     }
 
+    @Synchronized
     fun initialize(context: Context, options: InitializeOptions, completion: ((Result<String>) -> Unit)? = null) {
-        synchronized(initializationLock) {
+        if (!options.foregroundBannerFallback.isFinite() || options.foregroundBannerFallback < 0) {
+            completion?.invoke(Result.failure(SdkError.ApiError(400, "foregroundBannerFallback must be a non-negative number of seconds")))
+            return
+        }
+        synchronized(this) {
             val current = configuration
             if (current != null && (current.applicationId != options.applicationId ||
                 (current.apiBaseUrl ?: DEFAULT_API_BASE_URL) != (options.url ?: DEFAULT_API_BASE_URL) ||
                 current.reportedEnvironment != options.environment?.name?.lowercase())) {
-                completion?.invoke(Result.failure(IllegalStateException("SDK is configured for a different application or server")))
-                return
+                if (!configurationWasRestored) {
+                    completion?.invoke(Result.failure(IllegalStateException("SDK is configured for a different application or server")))
+                    return
+                }
+                // Bootstrap enables native delivery before the host starts. It must not
+                // override the host's first explicit configuration, even while registering.
+                initializationInProgress = false
+                initializationCompleted = false
+            } else if (configurationWasRestored && current != null) {
+                configuration = current.copy(debugMode = options.debugMode,
+                    foregroundBannerFallbackSeconds = options.foregroundBannerFallback)
+                Logger.debugMode = options.debugMode
+                RuntimeConfigurationStore(context.applicationContext).save(configuration!!)
             }
+            configurationWasRestored = false
             if (initializationCompleted) {
                 val id = getInstallationId()
                 if (id != null) { completion?.invoke(Result.success(id)); return }
@@ -94,10 +111,6 @@ class PushPlatform private constructor() {
                 completion?.let { initializationCallbacks.add(it) }
                 return
             }
-        }
-        if (!options.foregroundBannerFallback.isFinite() || options.foregroundBannerFallback < 0) {
-            completion?.invoke(Result.failure(SdkError.ApiError(400, "foregroundBannerFallback must be a non-negative number of seconds")))
-            return
         }
         val reported = when {
             options.environment != null -> options.environment.name.lowercase()
@@ -119,6 +132,7 @@ class PushPlatform private constructor() {
     fun getDeviceToken(): String? = deviceToken ?: fcmTokenManager?.getToken()
     fun getServerURL(): String = configuration?.apiBaseUrl ?: DEFAULT_API_BASE_URL
 
+    @Synchronized
     fun configure(
         context: Context,
         apiKey: String,
@@ -130,11 +144,12 @@ class PushPlatform private constructor() {
         foregroundBannerFallbackSeconds: Double = 0.0,
         completion: ((Result<String>) -> Unit)? = null
     ) {
-        synchronized(initializationLock) {
+        synchronized(this) {
             initializationInProgress = true
             initializationCompleted = false
             completion?.let { initializationCallbacks.add(it) }
         }
+        configurationWasRestored = false
         val version = configurationVersion.incrementAndGet()
         fcmRegistration = null
         Logger.debugMode = debugMode
@@ -165,7 +180,8 @@ class PushPlatform private constructor() {
         secureStorage!!.putString("registration_scope", scope)
         installationManager = InstallationManager(secureStorage!!)
         apiClient = ApiClient(apiKey, baseUrl)
-        val registry = TokenRegistry(apiClient!!, secureStorage!!)
+        val registry = TokenRegistry(apiClient!!, secureStorage!!,
+            isCurrent = { configurationVersion.get() == version }, configurationLock = this)
         registry.onSubscriptionId = { openReporter.flush() }
         tokenRegistry = registry
         fcmTokenManager = FcmTokenManager(secureStorage!!, tokenRegistry!!, reportedEnvironment ?: "")
@@ -174,7 +190,7 @@ class PushPlatform private constructor() {
         userManager = UserManager(apiClient!!, installationManager!!)
 
         // Initialize lifecycle tracker
-        if (appContext is Application) {
+        if (appContext is Application && lifecycleTracker == null) {
             lifecycleTracker = AppLifecycleTracker(appContext) {
                 refreshMetadata()
                 userManager?.retryPending()
@@ -213,7 +229,7 @@ class PushPlatform private constructor() {
             FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
                 val result = if (task.isSuccessful) Result.success(task.result)
                     else Result.failure(task.exception ?: IllegalStateException("FCM token unavailable"))
-                registration.fetched(fetchVersion, result)
+                synchronized(this) { registration.fetched(fetchVersion, result) }
             }
         } catch (error: Exception) {
             registration.fetched(fetchVersion, Result.failure(error))
@@ -228,19 +244,19 @@ class PushPlatform private constructor() {
             deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}",
             metadata = DeviceMetadata.collect(appContext)
         ) { result ->
-            if (configurationVersion.get() != version) {
-                completion?.invoke(Result.failure(IllegalStateException("SDK configuration was replaced")))
-                return@registerInstallation
-            }
-            when (result) {
-                is ApiClient.Result.Success -> {
-                    manager.saveBackendInstallationId(result.value)
-                    registration.installationReady(result.value)
-                    Logger.info("SDK configured with installation ID: ${result.value}")
-                    delegate?.didInitialize(result.value)
-                    finishInitialization(Result.success(result.value))
+            synchronized(this) {
+                // The version check and storage updates must be atomic with reconfiguration.
+                if (configurationVersion.get() != version) return@registerInstallation
+                when (result) {
+                    is ApiClient.Result.Success -> {
+                        manager.saveBackendInstallationId(result.value)
+                        registration.installationReady(result.value)
+                        Logger.info("SDK configured with installation ID: ${result.value}")
+                        finishInitialization(Result.success(result.value))
+                        if (configurationVersion.get() == version) delegate?.didInitialize(result.value)
+                    }
+                    is ApiClient.Result.Failure -> finishInitialization(Result.failure(result.error))
                 }
-                is ApiClient.Result.Failure -> finishInitialization(Result.failure(result.error))
             }
         }
     }
@@ -333,6 +349,7 @@ class PushPlatform private constructor() {
     /** Forward onNewToken when the application owns its FirebaseMessagingService. */
     fun registerFcmToken(token: String) = onFcmTokenRefreshed(token)
 
+    @Synchronized
     internal fun onFcmTokenRefreshed(token: String) {
         deviceToken = token
         delegate?.didUpdateDeviceToken(token)
@@ -371,7 +388,7 @@ class PushPlatform private constructor() {
     }
 
     private fun finishInitialization(result: Result<String>) {
-        val callbacks = synchronized(initializationLock) {
+        val callbacks = synchronized(this) {
             initializationInProgress = false
             initializationCompleted = result.isSuccess
             initializationCallbacks.toList().also { initializationCallbacks.clear() }
@@ -387,6 +404,7 @@ class PushPlatform private constructor() {
         configure(context, apiKey = "", environment = config.environment, apiBaseUrl = config.apiBaseUrl,
             applicationId = config.applicationId, reportedEnvironment = config.reportedEnvironment,
             foregroundBannerFallbackSeconds = config.foregroundBannerFallbackSeconds)
+        configurationWasRestored = true
         return true
     }
 

@@ -5,9 +5,11 @@ import com.pushplatform.sdk.utils.Logger
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.pow
 
-class TokenRegistry(
+class TokenRegistry @JvmOverloads constructor(
     private val apiClient: ApiClient,
-    private val storage: SecureStorage
+    private val storage: SecureStorage,
+    private val isCurrent: () -> Boolean = { true },
+    private val configurationLock: Any = Any()
 ) {
 
     private val maxRetries = 5
@@ -44,30 +46,34 @@ class TokenRegistry(
         attempt: Int,
         callback: (Result<Unit>) -> Unit
     ) {
+        if (!isCurrent()) return
         apiClient.registerSubscription(installationId, subscription) { result ->
-            when (result) {
-                is ApiClient.Result.Success -> {
-                    Logger.debug("Token registered successfully on attempt ${attempt + 1}")
-                    val subscriptionId = result.value
-                    if (subscription.provider == "fcm" && subscriptionId != null && storage.putString(KEY_SUBSCRIPTION_ID, subscriptionId)) {
-                        onSubscriptionId?.invoke(subscriptionId)
+            synchronized(configurationLock) {
+                if (!isCurrent()) return@registerSubscription
+                when (result) {
+                    is ApiClient.Result.Success -> {
+                        Logger.debug("Token registered successfully on attempt ${attempt + 1}")
+                        val subscriptionId = result.value
+                        if (subscription.provider == "fcm" && subscriptionId != null && storage.putString(KEY_SUBSCRIPTION_ID, subscriptionId)) {
+                            onSubscriptionId?.invoke(subscriptionId)
+                        }
+                        callback(Result.Success(Unit))
                     }
-                    callback(Result.Success(Unit))
-                }
-                is ApiClient.Result.Failure -> {
-                    val error = result.error
-                    val shouldRetry = shouldRetry(error, attempt)
+                    is ApiClient.Result.Failure -> {
+                        val error = result.error
+                        val shouldRetry = shouldRetry(error, attempt)
 
-                    if (shouldRetry) {
-                        val delay = calculateDelay(attempt)
-                        Logger.debug("Retrying token registration in ${delay}ms (attempt ${attempt + 1}/$maxRetries)")
+                        if (shouldRetry) {
+                            val delay = calculateDelay(attempt)
+                            Logger.debug("Retrying token registration in ${delay}ms (attempt ${attempt + 1}/$maxRetries)")
 
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            registerWithRetry(installationId, subscription, attempt + 1, callback)
-                        }, delay)
-                    } else {
-                        Logger.error("Token registration failed permanently: ${error.message}")
-                        callback(Result.Failure(error))
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                registerWithRetry(installationId, subscription, attempt + 1, callback)
+                            }, delay)
+                        } else {
+                            Logger.error("Token registration failed permanently: ${error.message}")
+                            callback(Result.Failure(error))
+                        }
                     }
                 }
             }
