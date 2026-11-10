@@ -2,6 +2,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
+	id("signing")
 }
 
 val sdkVersion = rootProject.file("VERSION").readText().trim()
@@ -127,5 +128,9 @@ afterEvaluate {
             }
         }
     }
-}
 
+	signing {
+		useGpgCmd()
+		sign(publishing.publications["release"])
+	}
+}
